@@ -1,0 +1,28 @@
+/*
+  style.css
+  This file includes your custom font and your animations.
+*/
+
+/* 1. Defines your custom font */
+@font-face {
+  font-family: 'Laude Title';
+  /* This path points to the font inside your 'assets' folder */
+  src: url('/assets/LaudeTitle.ttf') format('truetype');
+}
+
+/* 2. Applies your custom font to the whole page */
+body {
+    /* 'Laude Title' is now the main font, with 'Inter' as a fallback */
+    font-family: 'Laude Title', 'Inter', sans-serif;
+}
+
+/* 3. Your custom animation styles */
+.my-cool-animation {
+  animation: my-effect 2s infinite;
+}
+
+@keyframes my-effect {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}

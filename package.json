@@ -1,0 +1,26 @@
+{
+  "name": "heat-finder",
+  "version": "1.0.0",
+  "description": "Finds trending GitHub repos",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "github",
+    "api",
+    "trending"
+  ],
+  "author": "Arya Forutanpour",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0",
+    "open": "^10.2.0"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
