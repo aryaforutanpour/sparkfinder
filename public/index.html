@@ -10,293 +10,77 @@
     <link rel="stylesheet" href="style.css">
 
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center py-12">
-    <div class="w-full max-w-3xl bg-white rounded-lg shadow-lg p-8 m-4">
+<head>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="min-h-screen flex items-center justify-center py-12">
+    <div class="w-full max-w-3xl bg-[#30060f]/30 rounded-lg shadow-lg p-8 m-4 border border-gray-700">
         
-        <h1 class="text-3xl font-bold text-center text-gray-900 mb-6">Spark-Finder</h1>
-        <p class="text-center text-gray-600 mb-6">Find projects that are "exploding in traction" by searching for new repos that have gained stars quickly.</p>
+<h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6">
+    <span id="typewriter-text"></span><span class="blinking-cursor"></span>
+</h1>
+        <p class="text-center text-gray-300 mb-6">Find projects that show a promising "spark" in traction" by searching for new repos that have gained stars quickly.</p>
         
         <div class="space-y-4">
+            
             <div>
-                <label for="timeframe" class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-200 mb-2">
                     Timeframe
                 </label>
-                <select id="timeframe" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                    <option value="7">Created in the Last 7 Days</option>
-                    <option value="30" selected>Created in the Last 30 Days</option>
-                    <option value="90">Created in the Last 90 Days</option>
-                </select>
+              <div id="timeframe-group" class="grid grid-cols-5 gap-1 rounded-lg p-1 bg-gray-800 border border-gray-700">
+                <button data-value="7" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                    7 Days
+                </button>
+                <button data-value="30" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 active-btn">
+                    30 Days
+                </button>
+                <button data-value="90" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                    90 Days
+                </button>
+                <button data-value="all" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                    All Time
+                </button>
+                <div class="relative">
+        <button id="custom-btn-trigger" class="timeframe-btn w-full rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+            Custom
+        </button>
+        
+        <input type="number" 
+               id="custom-days-input" 
+               value="120" 
+               class="absolute inset-0 w-full h-full rounded-md bg-gray-800 text-gray-200 text-center text-sm font-medium border-3 border-blue-500 focus:ring-2 focus:ring-blue-500 hidden">
+    </div>
+
             </div>
-            
-            <button id="fetchButton" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+            </div>
+
+            <button id="fetchButton" class="w-full px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors btn-pulse-glow">
                 Find Trending Projects
             </button>
         </div>
 
-        <!-- Loading Spinner -->
         <div id="loading" class="text-center hidden my-8">
             <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p class="mt-2 text-gray-600">Finding repositories...</p>
+            <p class="mt-2 text-gray-300">Finding repositories...</p>
         </div>
 
-        <!-- Error Message -->
-        <div id="error" class="text-center text-red-600 font-medium hidden p-4 bg-red-50 rounded-lg my-6"></div>
+        <div id="error" class="text-center text-red-400 font-medium hidden p-4 bg-red-900/50 rounded-lg my-6"></div>
 
-        <!-- Results -->
-        <div id="results" class="hidden mt-8 border-t pt-6">
-            <h2 id="results-title" class="text-2xl font-semibold text-gray-800 mb-4">
+        <div id="results" class="hidden mt-8 border-t border-gray-700 pt-6">
+            <h2 id="results-title" class="text-2xl font-semibold text-gray-100 mb-4">
                 Trending Report
             </h2>
             <ul id="repo-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                <!-- Repositories will be injected here -->
-            </ul>
+                </ul>
         </div>
 
     </div>
-
-    <script>
-        // --- THIS SCRIPT IS 100% CORRECT ---
-
-        const fetchButton = document.getElementById('fetchButton');
-        const timeframeSelect = document.getElementById('timeframe');
-        const loading = document.getElementById('loading');
-        const error = document.getElementById('error');
-        const results = document.getElementById('results');
-        const resultsTitle = document.getElementById('results-title');
-        const repoList = document.getElementById('repo-list');
-
-        fetchButton.addEventListener('click', () => {
-            const days = timeframeSelect.value;
-            fetchData(days);
-        });
-
-        async function fetchData(days) {
-            showLoading(true);
-            showError(null);
-            results.classList.add('hidden');
-            repoList.innerHTML = ''; // Clear old results
-
-            try {
-                const res = await fetch(`/api/search?days=${days}`);
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    throw new Error(`API Search error: ${errorData.message}`);
-                }
-                const repos = await res.json(); 
-                if (!repos || repos.length === 0) {
-                    showError("No repositories found matching these criteria.");
-                    return;
-                }
-                displayResults(repos); 
-
-            } catch (err) {
-                console.error('Fetch Error:', err);
-                showError(err.message);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function displayResults(repos) {
-            resultsTitle.textContent = `Top Repos (Sorted by Avg. Velocity)`;
-            
-            const selectedTimeframe = timeframeSelect.value;
-            let deepDiveDays = 7;
-            let deepDiveText = "7-Day";
-
-            if (selectedTimeframe === '7') {
-                deepDiveDays = 1;
-                deepDiveText = "24-Hour";
-            }
-            
-            repos.forEach(repo => {
-                const li = document.createElement('li');
-                li.className = 'p-4 border border-gray-200 rounded-lg';
-                
-                const velocity = repo.velocityScore.toFixed(1);
-                
-                li.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <a href="${repo.html_url}" target="_blank" class="text-xl font-bold text-blue-600 hover:underline">${repo.full_name}</a>
-                        
-                        <div class="text-right">
-                            <div class="text-xl font-bold text-indigo-600">${velocity}</div>
-                            <div class="text-sm text-gray-500">avg. stars / day</div>
-                        </div>
-                    </div>
-                    
-                    <p class="text-sm text-gray-600 mt-2">${repo.description || 'No description provided.'}</p>
-                    
-                    <div class="flex items-center justify-between mt-3">
-                        <div class="flex items-center space-x-4 text-sm text-gray-700">
-                            <div class="flex items-center">
-                                <svg class="w-4 h-4 text-yellow-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z"></path>
-                                </svg>
-                                <span class="font-medium">${repo.stargazers_count.toLocaleString()}</span>
-                                <span class="text-gray-500 ml-1">total stars</span>
-                            </div>
-                            <span class="text-gray-400">|</span>
-                            <div class="flex items-center">
-                                <svg class="w-4 h-4 text-gray-500 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span class="text-gray-500">${repo.daysOld} ${repo.daysOld === 1 ? 'day' : 'days'} old</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center space-x-2">
-                            <div id="social-buzz-container-${repo.id}">
-                                <button 
-                                    data-repo="${repo.full_name}" 
-                                    data-target-id="${repo.id}"
-                                    class="calculate-buzz-btn text-sm text-gray-500 hover:text-blue-800 font-medium py-1 px-3 rounded-lg hover:bg-blue-100">
-                                    Check Buzz
-                                </button>
-                            </div>
-                            <div id="true-velocity-container-${repo.id}">
-                                <button 
-                                    data-repo="${repo.full_name}" 
-                                    data-target-id="${repo.id}"
-                                    data-deep-dive-days="${deepDiveDays}"
-                                    class="calculate-true-velocity-btn text-sm text-blue-600 hover:text-blue-800 font-medium py-1 px-3 rounded-lg hover:bg-blue-100">
-                                    Check ${deepDiveText} Velocity
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="buzz-results-container-${repo.id}" class="mt-3 pt-3 border-t border-gray-100 hidden">
-                        <!-- Links will be injected here -->
-                    </div>
-                `;
-                repoList.appendChild(li);
-            });
-
-            results.classList.remove('hidden');
-        }
-
-        // ---
-        // This single listener now handles BOTH buttons
-        // ---
-        repoList.addEventListener('click', async (e) => {
-            
-            // --- Feature 1: True Velocity (This will now work) ---
-            if (e.target.classList.contains('calculate-true-velocity-btn')) {
-                const button = e.target;
-                const repoName = button.dataset.repo;
-                const targetId = button.dataset.targetId;
-                const deepDiveDays = button.dataset.deepDiveDays; // This will be correct now
-                
-                const container = document.getElementById(`true-velocity-container-${targetId}`);
-                
-                container.innerHTML = `<span class="text-sm text-gray-500">Calculating...</span>`;
-
-                try {
-                    // This call will now be correct (e.g., checkDays=1)
-                    const res = await fetch(`/api/true-velocity?repo=${repoName}&checkDays=${deepDiveDays}`);
-                    
-                    if (!res.ok) {
-                        const errorData = await res.json();
-                        throw new Error(errorData.message || "Failed to fetch");
-                    }
-
-                    const data = await res.json();
-                    
-                    const dayText = data.daysScanned === 1 ? 'day' : 'days';
-                    container.innerHTML = `
-                        <div class="text-right">
-                            <div class="text-lg font-bold text-green-600">${data.starsInPeriod}</div>
-                            <div class="text-sm text-gray-500">stars in last ${data.daysScanned} ${dayText}</div>
-                        </div>
-                    `;
-
-                } catch (err) {
-                    console.error('True velocity fetch error:', err);
-                    container.innerHTML = `<span class="text-sm text-red-500">Error</span>`;
-                }
-            }
-
-            // --- Feature 2: Social Buzz (This was already working) ---
-            if (e.target.classList.contains('calculate-buzz-btn')) {
-                const button = e.target;
-                const repoName = button.dataset.repo;
-                const targetId = button.dataset.targetId;
-                
-                const buttonContainer = document.getElementById(`social-buzz-container-${targetId}`);
-                const resultsContainer = document.getElementById(`buzz-results-container-${targetId}`);
-                
-                buttonContainer.innerHTML = `<span class="text-sm text-gray-500">Checking...</span>`;
-
-                try {
-                    const res = await fetch(`/api/social-buzz?repo=${repoName}`);
-                    
-                    if (!res.ok) { throw new Error("Failed to fetch buzz"); }
-                    const data = await res.json();
-                    
-                    const hnCount = data.hackerNewsPosts.length;
-                    const redditCount = data.redditPosts.length;
-                    const totalMentions = hnCount + redditCount;
-
-                    buttonContainer.innerHTML = `
-                        <div class="flex items-center space-x-2 text-sm">
-                            <span class="text-gray-500" title="Hacker News">HN:</span>
-                            <span class="font-bold text-orange-600">${hnCount}</span>
-                            <span class="text-gray-500" title="Reddit">R:</span>
-                            <span class="font-bold text-red-600">${redditCount}</span>
-                        </div>
-                    `;
-
-                    if (totalMentions > 0) {
-                        let linksHtml = '<h4 class="text-sm font-semibold mb-2">Social Mentions (Last 30 Days):</h4><ul class="list-disc list-inside space-y-1 text-xs">';
-                        
-                        const createLink = (post, platform) => {
-                            const color = platform === 'hn' ? 'text-orange-600' : 'text-red-600';
-                            return `
-                                <li class="truncate">
-                                    <span class="font-bold ${color}">(${post.score})</span>
-                                    <a href="${post.url}" target="_blank" class="text-blue-600 hover:underline">
-                                        ${post.title}
-                                    </a>
-                                </li>
-                            `;
-                        };
-
-                        data.hackerNewsPosts.sort((a, b) => b.score - a.score);
-                        data.redditPosts.sort((a, b) => b.score - a.score);
-
-                        linksHtml += data.hackerNewsPosts.map(p => createLink(p, 'hn')).join('');
-                        linksHtml += data.redditPosts.map(p => createLink(p, 'rd')).join('');
-                        
-                        linksHtml += '</ul>';
-                        
-                        resultsContainer.innerHTML = linksHtml;
-                        resultsContainer.classList.remove('hidden');
-                    }
-
-                } catch (err) {
-                    console.error('Social buzz fetch error:', err);
-                    buttonContainer.innerHTML = `<span class="text-sm text-red-500">Error</span>`;
-                }
-            }
-        });
-
-
-        function showLoading(isLoading) {
-            loading.classList.toggle('hidden', !isLoading);
-        }
-
-        function showError(message) {
-            if (message) {
-                error.textContent = message;
-                error.classList.remove('hidden');
-            } else {
-                error.classList.add('hidden');
-            }
-        }
-    </script>
+    <script src="app.js" defer></script>
+    
 </body>
 </html>
