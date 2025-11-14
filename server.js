@@ -249,6 +249,7 @@ app.get('/api/true-velocity', async (req, res) => {
     }
 });
 
+
 // --- Endpoint 3: Social Buzz ---
 app.get('/api/social-buzz', async (req, res) => {
     const { repo } = req.query;
@@ -323,6 +324,100 @@ app.get('/api/social-buzz', async (req, res) => {
 
     } catch (err) {
         console.error(`[Social Buzz] Final error for ${repo}:`, err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// --- Endpoint 4: Get Star History (Paginated) ---
+app.get('/api/star-history', async (req, res) => {
+    // We now get 'repo' AND 'days' from the frontend
+    const { repo, days } = req.query;
+    const pat = process.env.GITHUB_PAT;
+
+    if (!repo || !days) {
+        return res.status(400).json({ message: 'Repo and days are required.' });
+    }
+    if (!pat) {
+        return res.status(500).json({ message: 'Server error: GitHub PAT not configured.' });
+    }
+
+    // 1. Calculate the "start date" (the cutoff)
+    const daysAgo = parseInt(days, 10);
+    if (isNaN(daysAgo) || daysAgo < 1) {
+        return res.status(400).json({ message: 'Invalid day range.' });
+    }
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysAgo);
+
+    console.log(`[Spark-Finder] Fetching paginated star history for ${repo} since ${startDate.toISOString()}`);
+
+    let allTimestamps = [];
+    let page = 1;
+    let keepFetching = true;
+
+    try {
+        // 2. Start the fetch loop
+        while (keepFetching) {
+            const url = `https://api.github.com/repos/${repo}/stargazers?per_page=100&page=${page}&direction=desc`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/vnd.github.v3.star+json',
+                    'Authorization': `token ${pat}`,
+                    'User-Agent': 'Spark-Finder-App'
+                }
+            });
+
+            logRateLimit(response); // Use your existing logger!
+
+            if (!response.ok) {
+                // If we get a 404 (Not Found), it's likely an empty repo. Stop gracefully.
+                if (response.status === 404) {
+                    keepFetching = false;
+                    break;
+                }
+                throw new Error(`GitHub API error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // If GitHub returns an empty page, we're done
+            if (data.length === 0) {
+                keepFetching = false;
+                break;
+            }
+
+            // 3. Process the 100 stars in this page
+            let lastStarDateInPage = null;
+            for (const star of data) {
+                const starDate = new Date(star.starred_at);
+                
+                // Only add stars that are *within* our timeframe
+                if (starDate >= startDate) {
+                    allTimestamps.push(star.starred_at);
+                }
+                lastStarDateInPage = starDate;
+            }
+
+            // 4. Decide if we need to fetch the next page
+            if (lastStarDateInPage === null || lastStarDateInPage < startDate || data.length < 100) {
+                // Stop if:
+                // a) The last star in the batch is *older* than our start date
+                // b) We've reached the last page (GitHub returned < 100 items)
+                keepFetching = false;
+            } else {
+                // Otherwise, increment the page and loop again
+                page++;
+            }
+        } // end while loop
+
+        console.log(`[Spark-Finder] Found ${allTimestamps.length} stars for ${repo} in the last ${days} days.`);
+        
+        // 5. Send the complete list of timestamps to the frontend
+        res.json({ timestamps: allTimestamps });
+
+    } catch (err) {
+        console.error(`[Spark-Finder] Error fetching paginated star history:`, err.message);
         res.status(500).json({ message: err.message });
     }
 });

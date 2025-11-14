@@ -28,6 +28,10 @@
       "dest": "/public/app.js"
     },
     {
+      "src": "/char-logic.js",
+      "dest": "/public/char-logic.js"
+    },
+    {
       "src": "/",
       "dest": "/public/index.html"
     }
