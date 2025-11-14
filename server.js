@@ -309,7 +309,7 @@ app.get('/api/social-buzz', async (req, res) => {
         const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&t=${redditTimeFilter}`;
         
         try {
-            const response = await fetch(url, { headers: { 'User-Agent': 'Spark-Finder-App' } });
+            const response = await fetch(url, { headers: { 'User-Agent': 'web:spark-finder:v1.0 (by /u/Key-Memory2999' } });
             if (!response.ok) return [];
             const data = await response.json();
             console.log(`[Social Buzz] Found ${data.data.children.length} Reddit posts.`);
@@ -332,6 +332,10 @@ app.get('/api/social-buzz', async (req, res) => {
             fetchHackerNews(repo),
             fetchReddit(repo)
         ]);
+
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
 
         res.json({
             repo: repo,
