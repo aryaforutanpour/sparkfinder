@@ -1,5 +1,6 @@
 // --- ADD THIS IMPORT AT THE VERY TOP ---
 import { toggleChart } from './chart-logic.js';
+import { toggleProfileModal } from './profile-logic.js'; // <-- ADD THIS LINE
 
 /* === app.js === */
 
@@ -211,6 +212,14 @@ repoList.addEventListener('click', async (e) => {
 
         toggleChart(button, repoName, targetId, timeframe, totalStars, daysOld);
     }
+
+    if (e.target.classList.contains('show-profile-btn')) {
+        const button = e.target;
+        const repoName = button.dataset.repo;
+        const targetId = button.dataset.targetId;
+
+        toggleProfileModal(button, repoName, targetId);
+    }
 });
 
 // --- 3. TYPEWRITER EFFECT ---
@@ -316,49 +325,55 @@ function displayResults(repos) {
                 
                 <div class="flex items-center space-x-4 text-xs text-gray-200">
                     <div class="flex items-center">
-                        <svg class="w-4 h-4 text-[#e9de97] mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z"></path></svg>
+                        <svg class="w-4 h-4 text-[#e9de97] mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95.69l1.07-3.292z"></path></svg>
                         <span class="font-medium">${repo.stargazers_count.toLocaleString()}</span>
-                        <span class="text-gray-400 ml-1">total stars</span>
+                        <span class="text-gray-400 ml-1">stars</span>
                     </div>
                     <span class="text-gray-600">|</span>
                     <div class="flex items-center">
                         <svg class="w-4 h-4 text-gray-400 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span class="text-gray-400">${repo.daysOld} ${repo.daysOld === 1 ? 'day' : 'days'} old</span>
+                        <span class="text-gray-400">${repo.daysOld} ${repo.daysOld === 1 ? 'day' : 'days'} old </span>
                     </div>
                 </div>
 
                 <div class="flex items-center space-x-2">
-                    <!-- This container has a stable width, so no change needed -->
                     <div id="social-buzz-container-${repo.id}">
                         <button 
                             data-repo="${repo.full_name}" 
                             data-timeframe="${selectedTimeframe}"
                             data-target-id="${repo.id}"
-                            class="calculate-buzz-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
-                            Check Buzz
+                            class="calculate-buzz-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-2 rounded-lg hover:bg-gray-700">
+                            Buzz
                         </button>
                     </div>
                     
-                    <!-- CHANGED: Added classes to the WRAPPER DIV -->
-                    <div id="chart-btn-container-${repo.id}" class="min-w-[120px] flex justify-center">
+                    <div id="profile-btn-container-${repo.id}" class="min-w-[100px] flex justify-center">
+                        <button 
+                            data-repo="${repo.full_name}" 
+                            data-target-id="${repo.id}"
+                            class="show-profile-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-2 rounded-lg hover:bg-gray-700">
+                            Profile
+                        </button>
+                    </div>
+
+                    <div id="chart-btn-container-${repo.id}" class="min-w-[100px] flex justify-center">
                         <button 
                             data-repo="${repo.full_name}" 
                             data-target-id="${repo.id}"
                             data-timeframe="${selectedTimeframe}"
                             data-total-stars="${repo.stargazers_count}"
                             data-days-old="${repo.daysOld}"
-                            class="show-chart-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
-                            Show Trajectory
+                            class="show-chart-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-2 rounded-lg hover:bg-gray-700">
+                            Trajectory
                         </button>
                     </div>
 
-                    <!-- CHANGED: Added classes to the WRAPPER DIV -->
-                    <div id="true-velocity-container-${repo.id}" class="min-w-[120px] flex justify-center">
+                    <div id="true-velocity-container-${repo.id}" class="min-w-[100px] flex justify-center">
                         <button 
                             data-repo="${repo.full_name}" 
                             data-target-id="${repo.id}"
                             data-deep-dive-days="${deepDiveDays}"
-                            class="calculate-true-velocity-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
+                            class="calculate-true-velocity-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-2 rounded-lg hover:bg-gray-700">
                             ${deepDiveText} Velocity
                         </button>
                     </div>
@@ -366,8 +381,7 @@ function displayResults(repos) {
             </div>
             
             <div id="buzz-results-container-${repo.id}" class="mt-3 pt-3 border-t border-gray-700 hidden">
-                <!-- Buzz links go here -->
-            </div>
+                </div>
 
             <div id="chart-container-${repo.id}" class="hidden mt-3 pt-3 border-t border-gray-700">
                 <canvas id="chart-${repo.id}"></canvas>

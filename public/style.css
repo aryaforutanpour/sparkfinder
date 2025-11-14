@@ -137,3 +137,108 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
 }
+
+.profile-modal-backdrop {
+  position: fixed; /* Sits on top of all content */
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7); /* Dark backdrop */
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Fade-in animation */
+  animation: modal-fade-in 0.2s ease-out;
+}
+
+.profile-modal-content {
+  position: relative;
+  background-color: #1f2937; /* Same as bg-gray-800 */
+  border: 1px solid #374151; /* Same as border-gray-700 */
+  border-radius: 0.5rem; /* Same as rounded-lg */
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.profile-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  font-size: 2rem;
+  line-height: 1;
+  color: #9ca3af; /* text-gray-400 */
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.profile-modal-close:hover {
+  color: #f3f4f6; /* text-gray-100 */
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.profile-readme-content {
+  max-height: 400px; /* Stop it from being too tall */
+  overflow-y: auto;  /* Add a scrollbar if needed */
+  color: #d1d5db;    /* text-gray-300 */
+}
+
+/* Style headings */
+.profile-readme-content h1,
+.profile-readme-content h2,
+.profile-readme-content h3 {
+  font-weight: 600;
+  color: #f3f4f6; /* text-gray-100 */
+  border-bottom: 1px solid #374151; /* border-gray-700 */
+  padding-bottom: 0.25rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.profile-readme-content h1 { font-size: 1.25rem; }
+.profile-readme-content h2 { font-size: 1.15rem; }
+.profile-readme-content h3 { font-size: 1.1rem; }
+
+/* Style paragraphs */
+.profile-readme-content p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+/* Style links */
+.profile-readme-content a {
+  color: #60a5fa; /* text-blue-400 */
+  text-decoration: underline;
+}
+
+/* Style lists */
+.profile-readme-content ul,
+.profile-readme-content ol {
+  list-style-position: inside;
+  margin-left: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.profile-readme-content li {
+  margin-bottom: 0.25rem;
+}
+
+/* Hide images, as they can break the layout */
+.profile-readme-content img {
+  display: none;
+}

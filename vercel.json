@@ -32,6 +32,10 @@
       "dest": "/public/chart-logic.js"
     },
     {
+      "src": "/profile-logic.js",
+      "dest": "/public/profile-logic.js"
+    },
+    {
       "src": "/",
       "dest": "/public/index.html"
     }

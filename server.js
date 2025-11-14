@@ -443,6 +443,88 @@ app.get('/api/star-history', async (req, res) => {
     }
 });
 
+// --- Endpoint 5: Get Profile Info (NOW INCLUDES README) ---
+app.get('/api/profile', async (req, res) => {
+    const { repo } = req.query; // repo is "owner/repo"
+    const pat = process.env.GITHUB_PAT;
+
+    if (!repo) {
+        return res.status(400).json({ message: 'Repo parameter is required.' });
+    }
+    if (!pat) {
+        return res.status(500).json({ message: 'Server error: GitHub PAT not configured.' });
+    }
+
+    const [owner, repoName] = repo.split('/');
+    if (!owner || !repoName) {
+        return res.status(400).json({ message: 'Invalid repo format. Must be "owner/repo".' });
+    }
+
+    const headers = {
+        'Authorization': `token ${pat}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    try {
+        // --- STEP 1: Get the repo info (to find the owner's 'login' and 'type') ---
+        const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}`, { headers });
+        logRateLimit(repoRes);
+        
+        if (!repoRes.ok) {
+            throw new Error(`Failed to fetch repo data: ${repoRes.status}`);
+        }
+
+        const repoData = await repoRes.json();
+        const ownerLogin = repoData.owner.login;
+        const ownerType = repoData.owner.type;
+
+        // --- STEP 2: Get the owner's profile info (bio, location, etc.) ---
+        const userRes = await fetch(`https://api.github.com/users/${ownerLogin}`, { headers });
+        logRateLimit(userRes);
+
+        if (!userRes.ok) {
+            throw new Error(`Failed to fetch user data: ${userRes.status}`);
+        }
+
+        const userData = await userRes.json();
+
+        // --- STEP 3: NEW - Try to fetch the Profile README ---
+        let readmeContent = null;
+        try {
+            const readmeRes = await fetch(`https://api.github.com/repos/${ownerLogin}/${ownerLogin}/readme`, { headers });
+            logRateLimit(readmeRes); // Log this call too
+
+            if (readmeRes.ok) {
+                const readmeData = await readmeRes.json();
+                // Content is Base64 encoded, so we must decode it
+                readmeContent = Buffer.from(readmeData.content, 'base64').toString('utf8');
+            }
+            // If readmeRes is not ok (e.g., 404), we just let readmeContent stay null
+            
+        } catch (readmeErr) {
+            console.log(`[Spark-Finder] No profile README found for ${ownerLogin}. This is normal.`);
+        }
+
+        // --- STEP 4: Combine all data ---
+        const profileData = {
+            login: userData.login,
+            name: userData.name || null,
+            type: ownerType,
+            bio: userData.bio || null, // We still send the bio as a fallback
+            company: userData.company || null,
+            location: userData.location || null,
+            readmeContent: readmeContent // This is the new field
+        };
+
+        res.json(profileData);
+
+    } catch (err) {
+        console.error(`[Spark-Finder] Error fetching profile for ${repo}:`, err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
 
 // --- Endpoint 4: Clear cache (useful for testing) ---
 app.post('/api/clear-cache', (req, res) => {
