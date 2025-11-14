@@ -21,6 +21,14 @@ function logRateLimit(response) {
     }
 }
 
+function getRedditTimeFilter(days) {
+    if (days <= 1) return 'day';
+    if (days <= 7) return 'week';
+    if (days <= 30) return 'month';
+    if (days <= 365) return 'year';
+    return 'all'; // For 'All Time' or > 365 days
+}
+
 // Simple in-memory cache for velocity calculations
 const velocityCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -249,23 +257,29 @@ app.get('/api/true-velocity', async (req, res) => {
     }
 });
 
-
 // --- Endpoint 3: Social Buzz ---
 app.get('/api/social-buzz', async (req, res) => {
-    const { repo } = req.query;
+    // CHANGED: Get 'days' from the query
+    const { repo, days } = req.query;
     if (!repo) {
         return res.status(400).json({ message: 'Missing "repo" query parameter.' });
     }
 
-    console.log(`[Social Buzz] Checking mentions for: ${repo}`);
+    // CHANGED: Parse 'days' or default to 30
+    const daysAgo = parseInt(days) || 30;
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const hnTimestamp = Math.floor(thirtyDaysAgo.getTime() / 1000);
+    console.log(`[Social Buzz] Checking mentions for: ${repo} (Last ${daysAgo} days)`);
+
+    // CHANGED: Calculate timestamp dynamically
+    const dateLimit = new Date();
+    dateLimit.setDate(dateLimit.getDate() - daysAgo);
+    const hnTimestamp = Math.floor(dateLimit.getTime() / 1000);
 
     // Helper function for Hacker News
+    // CHANGED: No longer needs to calculate its own time
     const fetchHackerNews = async (repoName) => {
         const query = `"${repoName}"`;
+        // CHANGED: Uses the dynamically calculated 'hnTimestamp'
         const url = `http://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story&numericFilters=created_at_i>${hnTimestamp}`;
         
         try {
@@ -287,9 +301,12 @@ app.get('/api/social-buzz', async (req, res) => {
     };
 
     // Helper function for Reddit
+    // CHANGED: No longer hard-coded to 'month'
     const fetchReddit = async (repoName) => {
         const query = `"${repoName}"`;
-        const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&t=month`;
+        // CHANGED: Get the dynamic time filter ('day', 'week', 'month', etc.)
+        const redditTimeFilter = getRedditTimeFilter(daysAgo);
+        const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&t=${redditTimeFilter}`;
         
         try {
             const response = await fetch(url, { headers: { 'User-Agent': 'Spark-Finder-App' } });
@@ -299,7 +316,7 @@ app.get('/api/social-buzz', async (req, res) => {
             
             return data.data.children.map(child => ({
                 title: child.data.title,
-                url: `https://www.reddit.com${child.data.permalink}`,
+                url: `https.reddit.com${child.data.permalink}`,
                 score: child.data.score
             }));
 

@@ -100,6 +100,7 @@ repoList.addEventListener('click', async (e) => {
         const repoName = button.dataset.repo;
         const targetId = button.dataset.targetId;
         const deepDiveDays = button.dataset.deepDiveDays;
+        const timeframe = button.dataset.timeframe; // <-- ADDED: Get the timeframe from the button
         
         const container = document.getElementById(`true-velocity-container-${targetId}`);
         container.innerHTML = `<span class="text-sm text-gray-400">Calculating...</span>`;
@@ -153,7 +154,26 @@ repoList.addEventListener('click', async (e) => {
             `;
 
             if (totalMentions > 0) {
-                let linksHtml = '<h4 class="text-sm font-semibold mb-2 text-gray-100">Social Mentions (Last 30 Days):</h4><ul class="list-disc list-inside space-y-1 text-xs">';
+                // --- START OF FIX ---
+                
+                // 1. Get the timeframe from the button
+                const timeframe = button.dataset.timeframe; 
+                
+                // 2. Create a dynamic title
+                let buzzTitleText;
+                if (parseInt(timeframe) >= 9999) { // Handle your "All Time" case
+                    buzzTitleText = "Social Mentions (All Time)";
+                } else if (parseInt(timeframe) === 1) {
+                    buzzTitleText = "Social Mentions (Last 24 Hours)";
+                } else {
+                    buzzTitleText = `Social Mentions (Last ${timeframe} Days)`;
+                }
+
+                // 3. Use the dynamic title in your HTML string
+                let linksHtml = `<h4 class="text-sm font-semibold mb-2 text-gray-100">${buzzTitleText}</h4><ul class="list-disc list-inside space-y-1 text-xs">`;
+                
+                // --- END OF FIX ---
+                
                 const createLink = (post, platform) => {
                     const color = platform === 'hn' ? 'text-orange-400' : 'text-red-400';
                     return `
@@ -312,8 +332,9 @@ function displayResults(repos) {
                     <div id="social-buzz-container-${repo.id}">
                         <button 
                             data-repo="${repo.full_name}" 
+                            data-timeframe="${selectedTimeframe}"
                             data-target-id="${repo.id}"
-                            class="calculate-buzz-btn text-xs text-gray-400 hover:text-blue-400 font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
+                            class="calculate-buzz-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
                             Check Buzz
                         </button>
                     </div>
@@ -326,7 +347,7 @@ function displayResults(repos) {
                             data-timeframe="${selectedTimeframe}"
                             data-total-stars="${repo.stargazers_count}"
                             data-days-old="${repo.daysOld}"
-                            class="show-chart-btn text-xs text-gray-400 hover:text-blue-400 font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
+                            class="show-chart-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
                             Show Trajectory
                         </button>
                     </div>
@@ -337,7 +358,7 @@ function displayResults(repos) {
                             data-repo="${repo.full_name}" 
                             data-target-id="${repo.id}"
                             data-deep-dive-days="${deepDiveDays}"
-                            class="calculate-true-velocity-btn text-xs text-[#c9587c] hover:text-[#e0628a] font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
+                            class="calculate-true-velocity-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-3 rounded-lg hover:bg-gray-700">
                             ${deepDiveText} Velocity
                         </button>
                     </div>
