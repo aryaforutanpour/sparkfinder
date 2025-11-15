@@ -3,61 +3,38 @@
   This file includes your custom font, animations, and theme settings.
 */
 
-/* 1. Defines your custom font */
-
 html {
     background-color: #000000; /* Sets the overscroll color to black */
 }
 
+/* 1. Defines your custom font */
 @font-face {
   font-family: 'Laude Title';
-  /* This path points to the font inside your 'assets' folder */
   src: url('/assets/LaudeTitle.ttf') format('truetype');
 }
 
-/* 2. Applies your custom font and the NEW background image */
+/* 2. Applies your custom font */
 body {
-    /* 'Laude Title' is now the main font, with 'Inter' as a fallback */
     font-family: 'Laude Title', 'Inter', sans-serif;
-
-    /* --- NEW BACKGROUND IMAGE --- */
-    background-image: url('/assets/darklaude.png');
-    background-size: cover;       /* Scale image to cover the entire screen */
-    background-position: center;  /* Center the image */
-    background-repeat: no-repeat; /* Do not repeat the image */
-    background-attachment: fixed; /* Keep background fixed when scrolling */
+    /* Background image is no longer here */
 }
 
 /* --- Blinking Cursor Animation --- */
 
 .blinking-cursor {
     display: inline-block;
-    
-    /* Size */
     width: 0.5em;
     height: 0.85em;
-
-    /* Color */
     background-color: #75706d;
-    
-    /* Alignment */
     margin-left: 0.2em;
     vertical-align: middle;
-
-    /* Nudge it up */
     transform: translateY(-0.05em); 
-
-    /* Call the animation, slowed down to 1.3 seconds */
     animation: blink-caret 2.3s step-end infinite;
 }
-
-/* This is the keyframes rule that was missing */
 @keyframes blink-caret {
-    /* At 0% and 100%, the cursor is visible */
     from, to { 
         background-color: #75706d;
     }
-    /* At 50%, the cursor is invisible */
     50% { 
         background-color: transparent;
     }
@@ -68,50 +45,36 @@ body {
 :root {
     --laude-text: #7592fd;
     --laude-accent: #e9de97;
-    --laude-accent-darker: #d9ce8a; /* A darker version for hover */
+    --laude-accent-darker: #d9ce8a;
     --dark-text: #333333; 
 }
-
-/* Style the button with our new accent color */
 #fetchButton {
     background-color: var(--laude-accent);
-    color: var(--dark-text); /* Use dark text on the light button */
+    color: var(--dark-text);
 }
-
-/* Add a hover effect */
 #fetchButton:hover {
     background-color: var(--laude-accent-darker);
 }
-
-/* --- Segmented Control Style --- */
 .timeframe-btn.active-btn {
-    /* CHANGED: Now uses your Periwinkle Blue variable */
     background-color: var(--laude-text); 
-    /* CHANGED: White text looks better on this blue than dark gray */
     color: white; 
     font-weight: 600;
 }
-
 .timeframe-btn.active-btn:hover {
-    /* A slightly darker version of periwinkle for the hover state */
     background-color: #5f7ce8;
 }
 
 /* === ANIMATIONS: Fade In + Pulse Glow === */
-
-/* 1. Define the Fade In animation */
 @keyframes fade-in-up {
   0% {
     opacity: 0;
-    transform: translateY(10px); /* Slide up slightly */
+    transform: translateY(10px);
   }
   100% {
     opacity: 1;
     transform: translateY(0);
   }
 }
-
-/* 2. Define the Pulse Glow animation (Existing) */
 @keyframes pulse-glow {
   0% {
     box-shadow: 0 0 10px -2px rgba(233, 222, 151, 0.6);
@@ -123,19 +86,11 @@ body {
     box-shadow: 0 0 10px -2px rgba(233, 222, 151, 0.6);
   }
 }
-
-/* 3. Apply BOTH animations to the class */
 .btn-pulse-glow {
-  /* First animation: fade-in-up (runs once for 0.6s) 
-     Second animation: pulse-glow (loops forever)
-  */
   animation: fade-in-up 0.8s ease-out, pulse-glow 3s infinite ease-in-out;
 }
 
-
-
 /* --- Hide spinners on number inputs --- */
-/* (This removes the default spinner arrows on number inputs) */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
@@ -145,50 +100,107 @@ input[type="number"] {
     -moz-appearance: textfield;
 }
 
-.profile-modal-backdrop {
-  position: fixed; /* Sits on top of all content */
-  z-index: 50;
+/* ===============================================
+  UPDATED STYLES FOR BACKGROUND LAYERING
+===============================================
+*/
+
+/* LAYER 0: The Fullscreen Background */
+.site-background {
+  position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.7); /* Dark backdrop */
+  z-index: 0; /* Sits behind everything */
   
+  background-image: url('/assets/darklaude.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* LAYER 1: The Floating Characters */
+#character-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1; /* Sits on top of the background */
+    overflow: hidden;
+}
+
+.floating-char {
+    position: absolute;
+    /* top: 0; and left: 0; are set by JS */
+    width: 64px;
+    height: 64px;
+    will-change: left, top; /* <-- CHANGED: Was transform */
+    user-select: none;      /* <-- NEW: Prevents text selection on dblclick */
+    opacity: 0.55;
+}
+
+/* LAYER 2: The Main Card */
+#main-card {
+    position: relative;
+    z-index: 2; /* Sits on top of the characters */
+}
+
+/* --- NEW CARD SANDWICH STYLES --- */
+.card-background-texture {
+    background-image: url('/assets/darklaude.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 0.5rem; 
+    overflow: hidden;
+}
+.card-tint {
+    background-color: rgba(48, 6, 15, 0.3); 
+}
+.card-content {
+    padding: 2rem; /* This was your p-8 */
+}
+
+/* --- Profile Modal Styles --- */
+.profile-modal-backdrop {
+  position: fixed;
+  z-index: 50; 
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-
-  /* Fade-in animation */
   animation: modal-fade-in 0.2s ease-out;
 }
-
 .profile-modal-content {
   position: relative;
-  background-color: #1f2937; /* Same as bg-gray-800 */
-  border: 1px solid #374151; /* Same as border-gray-700 */
-  border-radius: 0.5rem; /* Same as rounded-lg */
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
   padding: 2rem;
   width: 90%;
   max-width: 500px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
-
 .profile-modal-close {
   position: absolute;
   top: 0.5rem;
   right: 0.75rem;
   font-size: 2rem;
   line-height: 1;
-  color: #9ca3af; /* text-gray-400 */
+  color: #9ca3af;
   background: none;
   border: none;
   cursor: pointer;
 }
-
 .profile-modal-close:hover {
-  color: #f3f4f6; /* text-gray-100 */
+  color: #f3f4f6;
 }
-
 @keyframes modal-fade-in {
   from {
     opacity: 0;
@@ -200,41 +212,33 @@ input[type="number"] {
   }
 }
 
+/* --- Profile README Content Styles --- */
 .profile-readme-content {
-  max-height: 400px; /* Stop it from being too tall */
-  overflow-y: auto;  /* Add a scrollbar if needed */
-  color: #d1d5db;    /* text-gray-300 */
+  max-height: 400px;
+  overflow-y: auto;
+  color: #d1d5db;
 }
-
-/* Style headings */
 .profile-readme-content h1,
 .profile-readme-content h2,
 .profile-readme-content h3 {
   font-weight: 600;
-  color: #f3f4f6; /* text-gray-100 */
-  border-bottom: 1px solid #374151; /* border-gray-700 */
+  color: #f3f4f6;
+  border-bottom: 1px solid #374151;
   padding-bottom: 0.25rem;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
 }
-
 .profile-readme-content h1 { font-size: 1.25rem; }
 .profile-readme-content h2 { font-size: 1.15rem; }
 .profile-readme-content h3 { font-size: 1.1rem; }
-
-/* Style paragraphs */
 .profile-readme-content p {
   margin-bottom: 0.75rem;
   line-height: 1.6;
 }
-
-/* Style links */
 .profile-readme-content a {
-  color: #60a5fa; /* text-blue-400 */
+  color: #60a5fa;
   text-decoration: underline;
 }
-
-/* Style lists */
 .profile-readme-content ul,
 .profile-readme-content ol {
   list-style-position: inside;
@@ -244,8 +248,21 @@ input[type="number"] {
 .profile-readme-content li {
   margin-bottom: 0.25rem;
 }
-
-/* Hide images, as they can break the layout */
 .profile-readme-content img {
   display: none;
+}
+
+/* --- NEW: Character 360 Spin Animation --- */
+@keyframes spin-360 {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.floating-char.spinning {
+  /* Run the animation, 0.6s, keep it linear */
+  animation: spin-360 0.6s linear;
 }

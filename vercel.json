@@ -36,6 +36,10 @@
       "dest": "/public/profile-logic.js"
     },
     {
+      "src": "/floating-char.js",
+      "dest": "/public/floating-char.js"
+    },
+    {
       "src": "/",
       "dest": "/public/index.html"
     }

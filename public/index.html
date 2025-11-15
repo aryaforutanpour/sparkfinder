@@ -3,86 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000"> 
     <title>Spark-Finder</title>
+
+    <!-- Stylesheets -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <link rel="stylesheet" href="style.css">
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> </head>
-
+    <!-- 
+      THIS IS THE SCRIPT FIX 
+      (Removed the 's' from 'floating-chars.js')
+    -->
+    <script src="floating-char.js" type="module" defer></script>
 </head>
-<head>
-    <link rel="stylesheet" href="style.css">
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
 <body class="min-h-screen flex items-center justify-center py-12">
-    <div class="w-full max-w-3xl bg-[#30060f]/30 rounded-lg shadow-lg p-8 m-4 border border-gray-700">
+
+    <!-- LAYER 0: The Fullscreen Background -->
+    <div class="site-background"></div>
+
+    <!-- LAYER 1: The floating characters -->
+    <div id="character-container"></div>
+
+    <!-- 
+      LAYER 2: Your main card
+      - The old bg-[...], p-8, and border classes are GONE.
+      - It's now just a container for the new 3-layer sandwich.
+    -->
+    <div id="main-card" class="w-full max-w-3xl rounded-lg shadow-lg m-4 border border-gray-700">
         
-<h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6">
-    <span id="typewriter-text"></span><span class="blinking-cursor"></span>
-</h1>
-        <p class="text-center text-gray-300 mb-6">Find projects that show a promising "spark" in traction by searching for new repos that have gained stars quickly.</p>
-        
-        <div class="space-y-4">
+        <!-- NEW SANDWICH LAYER 1: The Opaque Texture -->
+        <!-- This has the darklaude.png and hides the characters -->
+        <div class="card-background-texture">
+
+            <!-- NEW SANDWICH LAYER 2: The Transparent Tint -->
+            <!-- This has your bg-[#30060f]/30 tint -->
+            <div class="card-tint">
+
+                <!-- NEW SANDWICH LAYER 3: The Content -->
+                <!-- This div gets the padding -->
+                <div class="card-content">
+
+                    <!-- All your content goes inside here -->
+                    <h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6">
+                        <span id="typewriter-text"></span><span class="blinking-cursor"></span>
+                    </h1>
+                    <p class="text-center text-gray-300 mb-6">Find projects that show a promising "spark" in traction by searching for new repos that have gained stars quickly.</p>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-200 mb-2">
+                                Timeframe
+                            </label>
+                          <div id="timeframe-group" class="grid grid-cols-5 gap-1 rounded-lg p-1 bg-gray-800 border-gray-700">
+                            <button data-value="7" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                                7 Days
+                            </button>
+                            <button data-value="30" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 active-btn">
+                                30 Days
+                            </button>
+                            <button data-value="90" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                                90 Days
+                            </button>
+                            <button data-value="all" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                                All Time
+                            </button>
+                            <div class="relative">
+                    <button id="custom-btn-trigger" class="timeframe-btn w-full rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                        Custom
+                    </button>
+                    
+                    <input type="number" 
+                           id="custom-days-input" 
+                           value="120" 
+                           class="absolute inset-0 w-full h-full rounded-md bg-gray-800 text-gray-200 text-center text-sm font-medium border-3 border-blue-500 focus:ring-2 focus:ring-blue-500 hidden">
+                </div>
             
-            <div>
-                <label class="block text-sm font-medium text-gray-200 mb-2">
-                    Timeframe
-                </label>
-              <div id="timeframe-group" class="grid grid-cols-5 gap-1 rounded-lg p-1 bg-gray-800 border border-gray-700">
-                <button data-value="7" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
-                    7 Days
-                </button>
-                <button data-value="30" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 active-btn">
-                    30 Days
-                </button>
-                <button data-value="90" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
-                    90 Days
-                </button>
-                <button data-value="all" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
-                    All Time
-                </button>
-                <div class="relative">
-        <button id="custom-btn-trigger" class="timeframe-btn w-full rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
-            Custom
-        </button>
+                        </div>
+                        </div>
+            
+                        <button id="fetchButton" class="w-full px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors btn-pulse-glow">
+                            Find Trending Projects
+                        </button>
+                    </div>
+            
+                    <div id="loading" class="text-center hidden my-8">
+                        <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p class="mt-2 text-gray-300">Finding repositories...</p>
+                    </div>
+            
+                    <div id="error" class="text-center text-red-400 font-medium hidden p-4 bg-red-900/50 rounded-lg my-6"></div>
+            
+                    <div id="results" class="hidden mt-8 border-t border-gray-700 pt-6">
+                        <h2 id="results-title" class="text-2xl font-semibold text-gray-100 mb-4">
+                            Trending Report
+                        </h2>
+                        <ul id="repo-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                            <!-- Results go here -->
+                        </ul>
+                    </div>
+
+                </div> <!-- End .card-content -->
+            </div> <!-- End .card-tint -->
+        </div> <!-- End .card-background-texture -->
         
-        <input type="number" 
-               id="custom-days-input" 
-               value="120" 
-               class="absolute inset-0 w-full h-full rounded-md bg-gray-800 text-gray-200 text-center text-sm font-medium border-3 border-blue-500 focus:ring-2 focus:ring-blue-500 hidden">
-    </div>
+    </div> <!-- This is the closing tag for #main-card -->
 
-            </div>
-            </div>
-
-            <button id="fetchButton" class="w-full px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors btn-pulse-glow">
-                Find Trending Projects
-            </button>
-        </div>
-
-        <div id="loading" class="text-center hidden my-8">
-            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="mt-2 text-gray-300">Finding repositories...</p>
-        </div>
-
-        <div id="error" class="text-center text-red-400 font-medium hidden p-4 bg-red-900/50 rounded-lg my-6"></div>
-
-        <div id="results" class="hidden mt-8 border-t border-gray-700 pt-6">
-            <h2 id="results-title" class="text-2xl font-semibold text-gray-100 mb-4">
-                Trending Report
-            </h2>
-            <ul id="repo-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                </ul>
-        </div>
-
-    </div>
+    <!-- app.js is loaded at the end for faster page load -->
     <script src="app.js" type="module" defer></script>
     
 </body>
