@@ -14,6 +14,7 @@ const repoList = document.getElementById('repo-list');
 const timeframeGroup = document.getElementById('timeframe-group');
 const customBtnTrigger = document.getElementById('custom-btn-trigger');
 const customDaysInput = document.getElementById('custom-days-input');
+let buzzDataCache = {};
 
 // --- (DELETE 'let chartInstances = {};' from here) ---
 
@@ -101,7 +102,6 @@ repoList.addEventListener('click', async (e) => {
         const repoName = button.dataset.repo;
         const targetId = button.dataset.targetId;
         const deepDiveDays = button.dataset.deepDiveDays;
-        const timeframe = button.dataset.timeframe; // <-- ADDED: Get the timeframe from the button
         
         const container = document.getElementById(`true-velocity-container-${targetId}`);
         container.innerHTML = `<span class="text-sm text-gray-400">Calculating...</span>`;
@@ -116,8 +116,8 @@ repoList.addEventListener('click', async (e) => {
             const dayText = data.daysScanned === 1 ? 'day' : 'days';
             container.innerHTML = `
                 <div class="text-right">
-                    <div class="text-lg font-bold text-green-400">${data.starsInPeriod}</div>
-                    <div class="text-sm text-gray-400">stars in last ${data.daysScanned} ${dayText}</div>
+                    <div class="text-xs font-bold text-[#7592fd]">${data.starsInPeriod}</div>
+                    <div class="text-xs text-gray-400">stars in last ${data.daysScanned} ${dayText}</div>
                 </div>
             `;
         } catch (err) {
@@ -131,77 +131,155 @@ repoList.addEventListener('click', async (e) => {
         const button = e.target;
         const repoName = button.dataset.repo;
         const targetId = button.dataset.targetId;
-        const buttonContainer = document.getElementById(`social-buzz-container-${targetId}`);
+        const timeframe = button.dataset.timeframe;
         const resultsContainer = document.getElementById(`buzz-results-container-${targetId}`);
         
-        buttonContainer.innerHTML = `<span class="text-sm text-gray-400">Checking...</span>`;
+        if (button.dataset.buzzState === 'hidden') {
+            button.textContent = 'Checking...';
+            button.disabled = true;
+            button.dataset.buzzState = 'loading';
 
-        try {
-            const res = await fetch(`/api/social-buzz?repo=${repoName}`);
-            if (!res.ok) { throw new Error("Failed to fetch buzz"); }
-            const data = await res.json();
-            
-            const hnCount = data.hackerNewsPosts.length;
-            const redditCount = data.redditPosts.length;
-            const totalMentions = hnCount + redditCount;
-
-            buttonContainer.innerHTML = `
-                <div class="flex items-center space-x-2 text-sm">
-                    <span class="text-gray-400" title="Hacker News">HN:</span>
-                    <span class="font-bold text-orange-400">${hnCount}</span>
-                    <span class="text-gray-400" title="Reddit">R:</span>
-                    <span class="font-bold text-red-400">${redditCount}</span>
-                </div>
-            `;
-
-            if (totalMentions > 0) {
-                // --- START OF FIX ---
+            try {
+                const res = await fetch(`/api/social-buzz?repo=${repoName}&days=${timeframe}`);
+                if (!res.ok) { throw new Error("Failed to fetch buzz"); }
                 
-                // 1. Get the timeframe from the button
-                const timeframe = button.dataset.timeframe; 
+                const data = await res.json();
                 
-                // 2. Create a dynamic title
-                let buzzTitleText;
-                if (parseInt(timeframe) >= 9999) { // Handle your "All Time" case
-                    buzzTitleText = "Social Mentions (All Time)";
-                } else if (parseInt(timeframe) === 1) {
-                    buzzTitleText = "Social Mentions (Last 24 Hours)";
+                // --- 1. Save all data to the cache ---
+                buzzDataCache[targetId] = data; 
+                
+                const hnCount = data.hackerNewsPosts.length;
+                const redditCount = data.redditPosts.length;
+                const twitterCount = data.twitterPosts.length;
+                const totalMentions = hnCount + redditCount + twitterCount;
+
+                button.textContent = 'Hide';
+                button.dataset.buzzState = 'shown';
+
+                if (totalMentions > 0) {
+                    let countsTitle = `
+                        <h4 class="text-sm font-semibold mb-3 text-gray-100 flex justify-between items-center">
+                            <span class="text-gray-100">X/Twitter: <span class="font-bold text-blue-400">${twitterCount}</span></span>
+                            <span class="text-gray-100">Reddit: <span class="font-bold text-orange-400">${redditCount}</span></span>
+                            <span class="text-gray-100">Hacker News: <span class="font-bold text-[#e9de97]">${hnCount}</span></span>
+                        </h4>
+                    `;
+
+                    let linksHtml = countsTitle + `<ul class="list-disc list-inside space-y-1 text-xs" id="buzz-links-${targetId}">`;
+                    
+                    const createLink = (post, platform) => {
+                        const color = platform === 'hn' ? 'text-[#e9de97]' : (platform === 'rd' ? 'text-orange-400' : 'text-blue-400');
+                        return `
+                            <li class="truncate text-gray-400">
+                                <span class="font-bold ${color}">(${post.score})</span>
+                                <a href="${post.url}" target="_blank" class="${color} hover:underline">
+                                    ${post.title}
+                                </a>
+                            </li>
+                        `;
+                    };
+                    
+                    data.hackerNewsPosts.sort((a, b) => b.score - a.score);
+                    data.redditPosts.sort((a, b) => b.score - a.score);
+                    data.twitterPosts.sort((a, b) => b.score - a.score);
+                    
+                    // --- 2. Render initial tweets, then the marker, then other platforms ---
+                    linksHtml += data.twitterPosts.slice(0, 10).map(p => createLink(p, 'tw')).join('');
+                    
+                    // --- THIS IS THE NEW MARKER ---
+                    linksHtml += `<li id="twitter-insertion-point-${targetId}" style="display: none;"></li>`;
+                    
+                    linksHtml += data.redditPosts.map(p => createLink(p, 'rd')).join('');
+                    linksHtml += data.hackerNewsPosts.map(p => createLink(p, 'hn')).join('');
+                    
+                    linksHtml += '</ul>';
+                    
+                    // --- 3. The "Show More" button goes AFTER the list ---
+                    if (data.twitterPosts.length > 10) {
+                        linksHtml += `
+                            <button 
+                                class="show-more-tweets text-xs text-[#c9587c] hover:underline mt-2"
+                                data-target-id="${targetId}"
+                                data-shown="10">
+                                Show More (${10} / ${twitterCount})
+                            </button>
+                        `;
+                    }
+                    
+                    resultsContainer.innerHTML = linksHtml;
+
                 } else {
-                    buzzTitleText = `Social Mentions (Last ${timeframe} Days)`;
+                    resultsContainer.innerHTML = `<p class="text-sm text-gray-400 italic">No social mentions found in this timeframe.</p>`;
                 }
 
-                // 3. Use the dynamic title in your HTML string
-                let linksHtml = `<h4 class="text-sm font-semibold mb-2 text-gray-100">${buzzTitleText}</h4><ul class="list-disc list-inside space-y-1 text-xs">`;
-                
-                // --- END OF FIX ---
-                
-                const createLink = (post, platform) => {
-                    const color = platform === 'hn' ? 'text-orange-400' : 'text-red-400';
-                    return `
-                        <li class="truncate">
-                            <span class="font-bold ${color}">(${post.score})</span>
-                            <a href="${post.url}" target="_blank" class="text-blue-400 hover:underline">
-                                ${post.title}
-                            </a>
-                        </li>
-                    `;
-                };
-                data.hackerNewsPosts.sort((a, b) => b.score - a.score);
-                data.redditPosts.sort((a, b) => b.score - a.score);
-                linksHtml += data.hackerNewsPosts.map(p => createLink(p, 'hn')).join('');
-                linksHtml += data.redditPosts.map(p => createLink(p, 'rd')).join('');
-                linksHtml += '</ul>';
-                resultsContainer.innerHTML = linksHtml;
                 resultsContainer.classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Social buzz fetch error:', err);
+                resultsContainer.innerHTML = `<span class="text-sm text-red-400">Error loading buzz.</span>`;
+                resultsContainer.classList.remove('hidden');
+                button.textContent = 'Buzz';
+                button.dataset.buzzState = 'hidden';
+            } finally {
+                button.disabled = false;
             }
-        } catch (err) {
-            console.error('Social buzz fetch error:', err);
-            buttonContainer.innerHTML = `<span class="text-sm text-red-400">Error</span>`;
+
+        } else if (button.dataset.buzzState === 'shown') {
+            button.textContent = 'Buzz';
+            button.dataset.buzzState = 'hidden';
+            resultsContainer.classList.add('hidden');
+            resultsContainer.innerHTML = ''; 
+            
+            // Clear the cache
+            delete buzzDataCache[targetId];
+        }
+    }
+
+    // --- 4. NEW: Handle "Show More Tweets" clicks ---
+    if (e.target.classList.contains('show-more-tweets')) {
+        const button = e.target;
+        const targetId = button.dataset.targetId;
+        
+        // --- THIS IS THE NEW LOGIC ---
+        // Find the insertion marker, not the whole list
+        const marker = document.getElementById(`twitter-insertion-point-${targetId}`);
+        if (!marker) return; // Safety check
+        
+        const data = buzzDataCache[targetId];
+        if (!data) return; 
+
+        const shown = parseInt(button.dataset.shown);
+        const totalCount = data.twitterPosts.length;
+        
+        const nextTweets = data.twitterPosts.slice(shown, shown + 10);
+
+        // (Duplicating createLink here is the simplest way)
+        const createLink = (post, platform) => {
+            const color = platform === 'hn' ? 'text-[#e9de97]' : (platform === 'rd' ? 'text-orange-400' : 'text-blue-400');
+            return `
+                <li class="truncate text-gray-400">
+                    <span class="font-bold ${color}">(${post.score})</span>
+                    <a href="${post.url}" target="_blank" class="text-blue-400 hover:underline">
+                        ${post.title}
+                    </a>
+                </li>
+            `;
+        };
+        
+        // --- 5. Insert new tweets BEFORE the marker ---
+        marker.insertAdjacentHTML('beforebegin', nextTweets.map(p => createLink(p, 'tw')).join(''));
+        
+        const newShown = shown + nextTweets.length;
+        
+        if (newShown >= totalCount) {
+            button.remove();
+        } else {
+            button.dataset.shown = newShown;
+            button.textContent = `Show More (${newShown} / ${totalCount})`;
         }
     }
 
     // --- Handle "Show Trajectory" clicks ---
-    // This now calls the IMPORTED toggleChart function
     if (e.target.classList.contains('show-chart-btn')) {
         const button = e.target;
         const repoName = button.dataset.repo;
@@ -212,24 +290,28 @@ repoList.addEventListener('click', async (e) => {
 
         toggleChart(button, repoName, targetId, timeframe, totalStars, daysOld);
     }
-
+    
+    // --- Handle "Show Profile" clicks ---
     if (e.target.classList.contains('show-profile-btn')) {
         const button = e.target;
         const repoName = button.dataset.repo;
         const targetId = button.dataset.targetId;
-
+        
         toggleProfileModal(button, repoName, targetId);
     }
 });
 
 // --- 3. TYPEWRITER EFFECT ---
-const textToType = "// SPARK-FINDER"; 
-const typeWriterElement = document.getElementById('typewriter-text');
+const textToType = "// SPARK FINDER"; // <-- Changed text to match your request
+let typeWriterElement; // <-- Declare it here
 let charIndex = 0;
 
 function typeWriter() {
     if (charIndex < textToType.length) {
-        typeWriterElement.textContent += textToType.charAt(charIndex);
+        // Check if element exists before using it
+        if (typeWriterElement) {
+            typeWriterElement.textContent += textToType.charAt(charIndex);
+        }
         charIndex++;
         setTimeout(typeWriter, 120); // Typing speed
     } else {
@@ -242,8 +324,17 @@ function typeWriter() {
 }
 
 window.addEventListener('load', () => {
-    typeWriterElement.textContent = ""; 
-    setTimeout(typeWriter, 300); // 300ms initial delay
+    // --- THIS IS THE FIX ---
+    // Find the element *after* the page has loaded
+    typeWriterElement = document.getElementById('typewriter-text');
+    
+    // Only run if we successfully found the element
+    if (typeWriterElement) {
+        typeWriterElement.textContent = ""; 
+        setTimeout(typeWriter, 300); // 300ms initial delay
+    } else {
+        console.error("Spark-Finder: Typewriter element not found!");
+    }
 });
 
 // --- 4. CORE FUNCTIONS ---
@@ -276,7 +367,7 @@ async function fetchData(days) {
 }
 
 function displayResults(repos) {
-    resultsTitle.textContent = `Top Repos (Sorted by Avg. Velocity)`;
+    resultsTitle.textContent = `Top Repos (Sorted by Avg.Velocity)`;
 
     let selectedTimeframe;
     let deepDiveDays;
@@ -316,7 +407,7 @@ function displayResults(repos) {
                 <a href="${repo.html_url}" target="_blank" class="text-xl font-bold text-[#e9de97] hover:text-[#d9ce8a] hover:underline">${repo.full_name}</a>
                 <div class="text-right">
                     <div class="text-xl font-bold text-[#7592fd]">${velocity}</div>
-                    <div class="text-sm text-gray-400">avg. stars / day</div>
+                    <div class="text-xs text-gray-400">avg. stars / day</div>
                 </div>
             </div>
             <p class="text-sm text-gray-300 mt-2">${repo.description || 'No description provided.'}</p>
@@ -325,14 +416,14 @@ function displayResults(repos) {
                 
                 <div class="flex items-center space-x-4 text-xs text-gray-200">
                     <div class="flex items-center">
-                        <svg class="w-4 h-4 text-[#e9de97] mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95.69l1.07-3.292z"></path></svg>
+                        <svg class="w-4 h-4 text-[#e9de97] mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.54-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z"></path></svg>
                         <span class="font-medium">${repo.stargazers_count.toLocaleString()}</span>
                         <span class="text-gray-400 ml-1">stars</span>
                     </div>
                     <span class="text-gray-600">|</span>
                     <div class="flex items-center">
                         <svg class="w-4 h-4 text-gray-400 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span class="text-gray-400">${repo.daysOld} ${repo.daysOld === 1 ? 'day' : 'days'} old </span>
+                        <span class="text-gray-400">${repo.daysOld} ${repo.daysOld === 1 ? 'day' : 'days'}</span>
                     </div>
                 </div>
 
@@ -342,6 +433,7 @@ function displayResults(repos) {
                             data-repo="${repo.full_name}" 
                             data-timeframe="${selectedTimeframe}"
                             data-target-id="${repo.id}"
+                            data-buzz-state="hidden" 
                             class="calculate-buzz-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-2 rounded-lg hover:bg-gray-700">
                             Buzz
                         </button>
@@ -407,5 +499,3 @@ function showError(message) {
         error.classList.add('hidden');
     }
 }
-
-// --- (DELETE ALL THE CHARTING FUNCTIONS FROM HERE) ---

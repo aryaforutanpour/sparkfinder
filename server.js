@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
+const { fetchAllBuzz } = require('./api_logic/buzz-logic.js');
 
 const app = express();
 const PORT = 3000;
@@ -19,14 +20,6 @@ function logRateLimit(response) {
         const percentage = ((remainingNum / total) * 100).toFixed(0);
         console.log(`[Spark-Finder] API Tokens: ${remainingNum.toLocaleString()} / 5,000 (${percentage}%)`);
     }
-}
-
-function getRedditTimeFilter(days) {
-    if (days <= 1) return 'day';
-    if (days <= 7) return 'week';
-    if (days <= 30) return 'month';
-    if (days <= 365) return 'year';
-    return 'all'; // For 'All Time' or > 365 days
 }
 
 // Simple in-memory cache for velocity calculations
@@ -257,90 +250,30 @@ app.get('/api/true-velocity', async (req, res) => {
     }
 });
 
-// --- Endpoint 3: Social Buzz ---
+// --- Endpoint 3: Social Buzz (CLEANED UP) ---
 app.get('/api/social-buzz', async (req, res) => {
-    // CHANGED: Get 'days' from the query
     const { repo, days } = req.query;
     if (!repo) {
         return res.status(400).json({ message: 'Missing "repo" query parameter.' });
     }
 
-    // CHANGED: Parse 'days' or default to 30
     const daysAgo = parseInt(days) || 30;
 
     console.log(`[Social Buzz] Checking mentions for: ${repo} (Last ${daysAgo} days)`);
 
-    // CHANGED: Calculate timestamp dynamically
-    const dateLimit = new Date();
-    dateLimit.setDate(dateLimit.getDate() - daysAgo);
-    const hnTimestamp = Math.floor(dateLimit.getTime() / 1000);
-
-    // Helper function for Hacker News
-    // CHANGED: No longer needs to calculate its own time
-    const fetchHackerNews = async (repoName) => {
-        const query = `"${repoName}"`;
-        // CHANGED: Uses the dynamically calculated 'hnTimestamp'
-        const url = `http://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story&numericFilters=created_at_i>${hnTimestamp}`;
-        
-        try {
-            const response = await fetch(url, { headers: { 'User-Agent': 'Spark-Finder-App' } });
-            if (!response.ok) return [];
-            const data = await response.json();
-            console.log(`[Social Buzz] Found ${data.hits.length} HN posts.`);
-            
-            return data.hits.map(hit => ({
-                title: hit.title,
-                url: `https://news.ycombinator.com/item?id=${hit.objectID}`,
-                score: hit.points
-            }));
-
-        } catch (err) {
-            console.error('[Social Buzz] HN Error:', err.message);
-            return [];
-        }
-    };
-
-    // Helper function for Reddit
-    // CHANGED: No longer hard-coded to 'month'
-    const fetchReddit = async (repoName) => {
-        const query = `"${repoName}"`;
-        // CHANGED: Get the dynamic time filter ('day', 'week', 'month', etc.)
-        const redditTimeFilter = getRedditTimeFilter(daysAgo);
-        const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&t=${redditTimeFilter}`;
-        
-        try {
-            const response = await fetch(url, { headers: { 'User-Agent': 'web:spark-finder:v1.0 (by /u/Key-Memory2999' } });
-            if (!response.ok) return [];
-            const data = await response.json();
-            console.log(`[Social Buzz] Found ${data.data.children.length} Reddit posts.`);
-            
-            return data.data.children.map(child => ({
-                title: child.data.title,
-                url: `https.reddit.com${child.data.permalink}`,
-                score: child.data.score
-            }));
-
-        } catch (err) {
-            console.error('[Social Buzz] Reddit Error:', err.message);
-            return [];
-        }
-    };
-
-    // Run both searches in parallel
     try {
-        const [hnPosts, redditPosts] = await Promise.all([
-            fetchHackerNews(repo),
-            fetchReddit(repo)
-        ]);
+        // 1. Call your new, separate logic file
+        const buzzData = await fetchAllBuzz(repo, daysAgo);
 
+        // 2. Set headers
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
 
+        // 3. Send the response
         res.json({
             repo: repo,
-            hackerNewsPosts: hnPosts,
-            redditPosts: redditPosts
+            ...buzzData // This spreads { hnPosts, redditPosts, twitterPosts }
         });
 
     } catch (err) {

@@ -4,6 +4,11 @@
 */
 
 /* 1. Defines your custom font */
+
+html {
+    background-color: #000000; /* Sets the overscroll color to black */
+}
+
 @font-face {
   font-family: 'Laude Title';
   /* This path points to the font inside your 'assets' folder */
@@ -126,6 +131,8 @@ body {
   */
   animation: fade-in-up 0.8s ease-out, pulse-glow 3s infinite ease-in-out;
 }
+
+
 
 /* --- Hide spinners on number inputs --- */
 /* (This removes the default spinner arrows on number inputs) */
