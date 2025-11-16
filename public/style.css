@@ -119,33 +119,88 @@ input[type="number"] {
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+  overflow: hidden; 
 }
 
-/* LAYER 1: The Floating Characters */
+/* --- Background Wave Animation (REMOVED) --- */
+
+/* LAYER 1: The new line canvas 
+  (Sits on top of the background)
+*/
+#line-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1; 
+}
+
+
+/* LAYER 2: The Floating Characters
+  (CHANGED: z-index is now 2)
+*/
 #character-container {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 1; /* Sits on top of the background */
+    z-index: 2; /* Sits on top of the lines */
     overflow: hidden;
 }
 
-.floating-char {
+/* --- NEW: Styles for the character wrapper --- */
+.floating-char-wrapper {
     position: absolute;
-    /* top: 0; and left: 0; are set by JS */
     width: 64px;
     height: 64px;
-    will-change: left, top; /* <-- CHANGED: Was transform */
-    user-select: none;      /* <-- NEW: Prevents text selection on dblclick */
-    opacity: 0.55;
+    will-change: left, top;
+    user-select: none;
 }
 
-/* LAYER 2: The Main Card */
+/* --- NEW: Styles for just the image --- */
+.char-image {
+    width: 100%;
+    height: 100%;
+    opacity: 0.7; /* Make characters transparent */
+}
+
+/* --- NEW: The white border box --- */
+.char-border-box {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    /* opacity: 0.5; -- Removed, border has opacity */
+}
+
+/* --- NEW: The X/Y coordinates label --- */
+.char-coords-label {
+    position: absolute;
+    bottom: -18px; 
+    left: 50%;
+    transform: translateX(-50%);
+    
+    color: white;
+    font-family: 'Laude Title', 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+/* LAYER 3: The Main Card 
+  (CHANGED: z-index is now 3)
+*/
 #main-card {
     position: relative;
-    z-index: 2; /* Sits on top of the characters */
+    z-index: 3; /* Sits on top of the characters */
 }
 
 /* --- NEW CARD SANDWICH STYLES --- */
@@ -155,9 +210,11 @@ input[type="number"] {
     background-position: center;
     border-radius: 0.5rem; 
     overflow: hidden;
+    position: relative;
 }
 .card-tint {
     background-color: rgba(48, 6, 15, 0.3); 
+    /* position: relative; z-index: 2; -- REMOVED */
 }
 .card-content {
     padding: 2rem; /* This was your p-8 */
@@ -252,7 +309,7 @@ input[type="number"] {
   display: none;
 }
 
-/* --- NEW: Character 360 Spin Animation --- */
+/* --- Character 360 Spin Animation --- */
 @keyframes spin-360 {
   from {
     transform: rotate(0deg);
@@ -262,7 +319,22 @@ input[type="number"] {
   }
 }
 
-.floating-char.spinning {
-  /* Run the animation, 0.6s, keep it linear */
+/* --- UPDATED: Now targets the image --- */
+.char-image.spinning {
+  animation: spin-360 0.6s linear;
+}
+
+/* --- Character 360 Spin Animation --- */
+@keyframes spin-360 {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* This targets the image *inside* the wrapper */
+.char-image.spinning {
   animation: spin-360 0.6s linear;
 }

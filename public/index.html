@@ -14,11 +14,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    
-    <!-- 
-      THIS IS THE SCRIPT FIX 
-      (Removed the 's' from 'floating-chars.js')
-    -->
     <script src="floating-char.js" type="module" defer></script>
 </head>
 
@@ -27,26 +22,28 @@
     <!-- LAYER 0: The Fullscreen Background -->
     <div class="site-background"></div>
 
-    <!-- LAYER 1: The floating characters -->
+    <!-- 
+      --- NEW: LAYER 1 ---
+      This is the new canvas for drawing lines
+    -->
+    <canvas id="line-canvas"></canvas>
+
+    <!-- LAYER 2: The floating characters -->
     <div id="character-container"></div>
 
     <!-- 
-      LAYER 2: Your main card
-      - The old bg-[...], p-8, and border classes are GONE.
-      - It's now just a container for the new 3-layer sandwich.
+      LAYER 3: Your main card
+      (All your page content is safe inside this div)
     -->
     <div id="main-card" class="w-full max-w-3xl rounded-lg shadow-lg m-4 border border-gray-700">
         
         <!-- NEW SANDWICH LAYER 1: The Opaque Texture -->
-        <!-- This has the darklaude.png and hides the characters -->
         <div class="card-background-texture">
 
             <!-- NEW SANDWICH LAYER 2: The Transparent Tint -->
-            <!-- This has your bg-[#30060f]/30 tint -->
             <div class="card-tint">
 
                 <!-- NEW SANDWICH LAYER 3: The Content -->
-                <!-- This div gets the padding -->
                 <div class="card-content">
 
                     <!-- All your content goes inside here -->
