@@ -1,6 +1,6 @@
-// --- ADD THIS IMPORT AT THE VERY TOP ---
+// --- Imports ---
 import { toggleChart } from './chart-logic.js';
-import { toggleProfileModal } from './profile-logic.js'; // <-- ADD THIS LINE
+import { toggleProfileModal } from './profile-logic.js';
 
 /* === app.js === */
 
@@ -16,7 +16,12 @@ const customBtnTrigger = document.getElementById('custom-btn-trigger');
 const customDaysInput = document.getElementById('custom-days-input');
 let buzzDataCache = {};
 
-// --- (DELETE 'let chartInstances = {};' from here) ---
+// --- NEW: Bookmark Constants & State ---
+const showBookmarksBtn = document.getElementById('showBookmarksBtn');
+let bookmarks = [];           // Stores the full repo objects
+let currentRepoList = [];   // Stores the complete list from the last fetch
+let bookmarksViewActive = false; // Are we currently viewing bookmarks?
+
 
 // --- 2. EVENT LISTENERS ---
 
@@ -93,8 +98,54 @@ fetchButton.addEventListener('click', () => {
     fetchData(days);
 });
 
-// Handles clicks inside the results list (Buzz, Velocity, Chart)
+// --- NEW: Handle click on "Show Bookmarks" button ---
+showBookmarksBtn.addEventListener('click', () => {
+    // 1. Toggle the view state
+    bookmarksViewActive = !bookmarksViewActive;
+    
+    // 2. Style the button
+    showBookmarksBtn.classList.toggle('active', bookmarksViewActive);
+    
+    // 3. Re-render the list
+    renderResults();
+});
+
+// Handles clicks inside the results list (Buzz, Velocity, Chart, AND BOOKMARKS)
 repoList.addEventListener('click', async (e) => {
+
+    // --- NEW: Handle "Bookmark" clicks (MUST BE FIRST) ---
+    const bookmarkBtn = e.target.closest('.bookmark-btn');
+    if (bookmarkBtn) {
+        const repoId = parseInt(bookmarkBtn.dataset.repoId);
+        
+        // Find the index of this repo in the bookmarks array
+        const bookmarkIndex = bookmarks.findIndex(repo => repo.id === repoId);
+        
+        if (bookmarkIndex > -1) {
+            // It's already bookmarked, so remove it
+            bookmarks.splice(bookmarkIndex, 1);
+            bookmarkBtn.classList.remove('bookmarked');
+        } else {
+            // It's not bookmarked, so add it
+            // Find the full repo object from *either* list
+            const repoToAdd = currentRepoList.find(repo => repo.id === repoId) || bookmarks.find(repo => repo.id === repoId);
+            if (repoToAdd) {
+                bookmarks.push(repoToAdd);
+                bookmarkBtn.classList.add('bookmarked');
+            }
+        }
+        
+        // Update the button count
+        showBookmarksBtn.textContent = `Show Bookmarks (${bookmarks.length})`;
+        
+        // If we're in bookmark view, re-render the list to show the removal
+        if (bookmarksViewActive) {
+            renderResults();
+        }
+        
+        // Return early so we don't trigger other event listeners
+        return; 
+    }
 
     // --- Handle "Check Velocity" clicks ---
     if (e.target.classList.contains('calculate-true-velocity-btn')) {
@@ -145,7 +196,6 @@ repoList.addEventListener('click', async (e) => {
                 
                 const data = await res.json();
                 
-                // --- 1. Save all data to the cache ---
                 buzzDataCache[targetId] = data; 
                 
                 const hnCount = data.hackerNewsPosts.length;
@@ -157,6 +207,7 @@ repoList.addEventListener('click', async (e) => {
                 button.dataset.buzzState = 'shown';
 
                 if (totalMentions > 0) {
+                    
                     let countsTitle = `
                         <h4 class="text-sm font-semibold mb-3 text-gray-100 flex justify-between items-center">
                             <span class="text-gray-100">X/Twitter: <span class="font-bold text-blue-400">${twitterCount}</span></span>
@@ -183,10 +234,8 @@ repoList.addEventListener('click', async (e) => {
                     data.redditPosts.sort((a, b) => b.score - a.score);
                     data.twitterPosts.sort((a, b) => b.score - a.score);
                     
-                    // --- 2. Render initial tweets, then the marker, then other platforms ---
                     linksHtml += data.twitterPosts.slice(0, 10).map(p => createLink(p, 'tw')).join('');
                     
-                    // --- THIS IS THE NEW MARKER ---
                     linksHtml += `<li id="twitter-insertion-point-${targetId}" style="display: none;"></li>`;
                     
                     linksHtml += data.redditPosts.map(p => createLink(p, 'rd')).join('');
@@ -194,7 +243,6 @@ repoList.addEventListener('click', async (e) => {
                     
                     linksHtml += '</ul>';
                     
-                    // --- 3. The "Show More" button goes AFTER the list ---
                     if (data.twitterPosts.length > 10) {
                         linksHtml += `
                             <button 
@@ -230,20 +278,17 @@ repoList.addEventListener('click', async (e) => {
             resultsContainer.classList.add('hidden');
             resultsContainer.innerHTML = ''; 
             
-            // Clear the cache
             delete buzzDataCache[targetId];
         }
     }
 
-    // --- 4. NEW: Handle "Show More Tweets" clicks ---
+    // --- Handle "Show More Tweets" clicks ---
     if (e.target.classList.contains('show-more-tweets')) {
         const button = e.target;
         const targetId = button.dataset.targetId;
         
-        // --- THIS IS THE NEW LOGIC ---
-        // Find the insertion marker, not the whole list
         const marker = document.getElementById(`twitter-insertion-point-${targetId}`);
-        if (!marker) return; // Safety check
+        if (!marker) return; 
         
         const data = buzzDataCache[targetId];
         if (!data) return; 
@@ -253,20 +298,18 @@ repoList.addEventListener('click', async (e) => {
         
         const nextTweets = data.twitterPosts.slice(shown, shown + 10);
 
-        // (Duplicating createLink here is the simplest way)
         const createLink = (post, platform) => {
             const color = platform === 'hn' ? 'text-[#e9de97]' : (platform === 'rd' ? 'text-orange-400' : 'text-blue-400');
             return `
                 <li class="truncate text-gray-400">
-                    <span class="font-bold ${color}">(${post.score})</span>
-                    <a href="${post.url}" target="_blank" class="text-blue-400 hover:underline">
+                    <span classD="font-bold ${color}">(${post.score})</span>
+                    <a href="${post.url}" target="_blank" class="${color} hover:underline">
                         ${post.title}
                     </a>
                 </li>
             `;
         };
         
-        // --- 5. Insert new tweets BEFORE the marker ---
         marker.insertAdjacentHTML('beforebegin', nextTweets.map(p => createLink(p, 'tw')).join(''));
         
         const newShown = shown + nextTweets.length;
@@ -302,13 +345,12 @@ repoList.addEventListener('click', async (e) => {
 });
 
 // --- 3. TYPEWRITER EFFECT ---
-const textToType = "// SPARK FINDER"; // <-- Changed text to match your request
-let typeWriterElement; // <-- Declare it here
+const textToType = "// SPARK FINDER"; 
+let typeWriterElement; 
 let charIndex = 0;
 
 function typeWriter() {
     if (charIndex < textToType.length) {
-        // Check if element exists before using it
         if (typeWriterElement) {
             typeWriterElement.textContent += textToType.charAt(charIndex);
         }
@@ -324,11 +366,8 @@ function typeWriter() {
 }
 
 window.addEventListener('load', () => {
-    // --- THIS IS THE FIX ---
-    // Find the element *after* the page has loaded
     typeWriterElement = document.getElementById('typewriter-text');
     
-    // Only run if we successfully found the element
     if (typeWriterElement) {
         typeWriterElement.textContent = ""; 
         setTimeout(typeWriter, 300); // 300ms initial delay
@@ -344,6 +383,11 @@ async function fetchData(days) {
     showError(null);
     results.classList.add('hidden');
     repoList.innerHTML = '';
+    
+    // --- NEW: Reset bookmark view on new fetch ---
+    bookmarksViewActive = false;
+    showBookmarksBtn.classList.remove('active');
+    // ---
 
     try {
         const res = await fetch(`/api/search?days=${days}`);
@@ -351,12 +395,17 @@ async function fetchData(days) {
             const errorData = await res.json();
             throw new Error(`API Search error: ${errorData.message}`);
         }
-        const repos = await res.json(); 
-        if (!repos || repos.length === 0) {
+        
+        // --- UPDATED: Save to global list ---
+        currentRepoList = await res.json(); 
+        
+        if (!currentRepoList || currentRepoList.length === 0) {
             showError("No repositories found matching these criteria.");
             return;
         }
-        displayResults(repos); 
+        
+        // --- UPDATED: Call new render function ---
+        renderResults(); 
 
     } catch (err) {
         console.error('Fetch Error:', err);
@@ -366,8 +415,37 @@ async function fetchData(days) {
     }
 }
 
+// --- NEW: This function decides WHAT to display ---
+function renderResults() {
+    if (bookmarksViewActive) {
+        resultsTitle.textContent = `Bookmarked Repos (${bookmarks.length})`;
+        if (bookmarks.length === 0) {
+            showError("You haven't bookmarked any repos yet.");
+            repoList.innerHTML = ''; // Clear list
+        } else {
+            showError(null); // Clear error
+            displayResults(bookmarks);
+        }
+    } else {
+        resultsTitle.textContent = `Top Repos (Sorted by Avg. Velocity)`;
+        showError(null); // Clear error
+        displayResults(currentRepoList);
+    }
+    
+    // Make sure the results section is visible
+    if ((bookmarksViewActive && bookmarks.length > 0) || (!bookmarksViewActive && currentRepoList.length > 0)) {
+        results.classList.remove('hidden');
+    } else {
+        // This handles showing the "no bookmarks" error
+        results.classList.add('hidden');
+    }
+}
+
+
+// --- UPDATED: This function just renders ANY list it's given ---
 function displayResults(repos) {
-    resultsTitle.textContent = `Top Repos (Sorted by Avg.Velocity)`;
+    // --- UPDATED: Removed resultsTitle.textContent from here ---
+    repoList.innerHTML = ''; // Clear the list first
 
     let selectedTimeframe;
     let deepDiveDays;
@@ -402,9 +480,28 @@ function displayResults(repos) {
         li.className = 'p-4 border border-gray-700 rounded-lg';
         const velocity = repo.velocityScore.toFixed(1);
         
+        // --- NEW: Check if this repo is bookmarked ---
+        const isBookmarked = bookmarks.some(b => b.id === repo.id);
+        
         li.innerHTML = `
-            <div class="flex justify-between items-center">
-                <a href="${repo.html_url}" target="_blank" class="text-xl font-bold text-[#e9de97] hover:text-[#d9ce8a] hover:underline">${repo.full_name}</a>
+            <!-- --- UPDATED: Added items-start --- -->
+            <div class="flex justify-between items-start">
+                <!-- --- UPDATED: Added wrapper div --- -->
+                <div class="flex items-center space-x-2">
+                    <!-- --- NEW: Bookmark Button --- -->
+                    <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" data-repo-id="${repo.id}">
+                        <!-- Empty Icon -->
+                        <svg class="icon-empty w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 11.186 0Z" />
+                        </svg>
+                        <!-- Filled Icon -->
+                        <svg class="icon-filled w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                          <path fill-rule="evenodd" d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21L12 17.25 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    
+                    <a href="${repo.html_url}" target="_blank" class="text-xl font-bold text-[#e9de97] hover:text-[#d9ce8a] hover:underline">${repo.full_name}</a>
+                </div>
                 <div class="text-right">
                     <div class="text-xl font-bold text-[#7592fd]">${velocity}</div>
                     <div class="text-xs text-gray-400">avg. stars / day</div>
@@ -482,7 +579,7 @@ function displayResults(repos) {
         repoList.appendChild(li);
     });
 
-    results.classList.remove('hidden');
+    // results.classList.remove('hidden'); // <-- This is handled by renderResults()
 }
 
 // --- 5. HELPER FUNCTIONS ---

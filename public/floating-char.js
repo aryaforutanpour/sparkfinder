@@ -19,7 +19,7 @@ let ctx = null; // This is the "drawing context"
 
 // This is the main animation loop
 function animate() {
-    if (!containerElement || !cardElement || !ctx) return; // <-- Added ctx check
+    if (!containerElement || !cardElement || !ctx) return; 
 
     const cardRect = cardElement.getBoundingClientRect();
 
@@ -38,7 +38,7 @@ function animate() {
         const charA_centerY = charA.y + (CHAR_SIZE / 2);
 
         for (let j = 0; j < characters.length; j++) {
-            if (i === j) continue; // Don't check against self
+            if (i === j) continue; 
 
             const charB = characters[j];
             
@@ -59,11 +59,11 @@ function animate() {
         // Draw the line to the closest neighbor
         if (closestNeighbor) {
             ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; // 40% opaque white
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; 
             ctx.lineWidth = 1;
-            ctx.moveTo(charA_centerX, charA_centerY); // Start at center of charA
+            ctx.moveTo(charA_centerX, charA_centerY); 
             ctx.lineTo(
-                closestNeighbor.x + (CHAR_SIZE / 2), // End at center of neighbor
+                closestNeighbor.x + (CHAR_SIZE / 2), 
                 closestNeighbor.y + (CHAR_SIZE / 2)
             );
             ctx.stroke();
@@ -83,17 +83,30 @@ function animate() {
                 charA.y + CHAR_SIZE > charB.y;
 
             if (isColliding) {
-                // --- This is the "Stronger Bump" logic ---
+                // --- THIS IS THE FIX ---
+                // 1. Calculate direction vector from B to A
+                const dx_vec = (charA.x + CHAR_SIZE / 2) - (charB.x + CHAR_SIZE / 2);
+                const dy_vec = (charA.y + CHAR_SIZE / 2) - (charB.y + CHAR_SIZE / 2);
+                const distance = Math.sqrt(dx_vec * dx_vec + dy_vec * dy_vec) || 0.1; // prevent div by zero
+
+                // 2. Normalize the vector (get the direction)
+                const nudgeX = (dx_vec / distance); 
+                const nudgeY = (dy_vec / distance);
+
+                // 3. Apply the "nudge" to push them directly apart
+                const nudgeStrength = 2; // Nudge them 2px apart
+                charA.x += nudgeX * nudgeStrength;
+                charA.y += nudgeY * nudgeStrength;
+                charB.x -= nudgeX * nudgeStrength;
+                charB.y -= nudgeY * nudgeStrength;
+
+                // 4. Reverse their directions for the "bump"
                 charA.dx *= -1;
                 charA.dy *= -1;
                 charB.dx *= -1;
                 charB.dy *= -1;
-
-                // Nudge them apart
-                charA.x += charA.dx * 2; 
-                charA.y += charA.dy * 2;
-                charB.x += charB.dx * 2; 
-                charB.y += charB.dy * 2;
+                
+                // --- END OF FIX ---
             }
         }
         
@@ -146,8 +159,6 @@ function animate() {
 function init() {
     containerElement = document.getElementById('character-container');
     cardElement = document.getElementById('main-card'); 
-    
-    // --- Get the canvas ---
     canvas = document.getElementById('line-canvas');
     
     if (!containerElement || !cardElement || !canvas) { 
@@ -155,12 +166,10 @@ function init() {
         return;
     }
     
-    // --- Set up canvas ---
     ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // --- Add a resize listener ---
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -175,31 +184,24 @@ function init() {
     const cardRect = cardElement.getBoundingClientRect();
 
     for (let i = 1; i <= CHAR_COUNT; i++) {
-        // --- Create a wrapper for all parts ---
         const charWrapper = document.createElement('div');
         charWrapper.className = 'floating-char-wrapper';
 
-        // 1. The image
         const img = document.createElement('img');
         img.src = `/assets/char${i}.png`;
         img.className = 'char-image';
 
-        // 2. The new border box
         const borderBox = document.createElement('div');
         borderBox.className = 'char-border-box';
 
-        // 3. The new coordinates label
         const coordsLabel = document.createElement('span');
         coordsLabel.className = 'char-coords-label';
         coordsLabel.textContent = 'X:0 Y:0';
 
-        // Put them all inside the wrapper
         charWrapper.appendChild(img);
         charWrapper.appendChild(borderBox);
         charWrapper.appendChild(coordsLabel);
         
-        // --- END OF NEW STRUCTURE ---
-
         let spawnX, spawnY;
         let attempts = 0; 
         do {
@@ -243,6 +245,8 @@ function init() {
         img.addEventListener('animationend', () => {
             img.classList.remove('spinning');
         });
+        
+        // mousedown listener is removed, so dblclick works
     }
 
     animate();
