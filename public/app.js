@@ -16,11 +16,13 @@ const customBtnTrigger = document.getElementById('custom-btn-trigger');
 const customDaysInput = document.getElementById('custom-days-input');
 let buzzDataCache = {};
 
-// --- NEW: Bookmark Constants & State ---
+// --- NEW: Bookmark & Filter Constants & State ---
 const showBookmarksBtn = document.getElementById('showBookmarksBtn');
+const ownerFilterGroup = document.getElementById('owner-filter-group'); // NEW
 let bookmarks = [];           // Stores the full repo objects
 let currentRepoList = [];   // Stores the complete list from the last fetch
 let bookmarksViewActive = false; // Are we currently viewing bookmarks?
+let currentOwnerFilter = 'all'; // NEW: 'all', 'User', or 'Organization'
 
 
 // --- 2. EVENT LISTENERS ---
@@ -98,7 +100,7 @@ fetchButton.addEventListener('click', () => {
     fetchData(days);
 });
 
-// --- NEW: Handle click on "Show Bookmarks" button ---
+// --- Handle click on "Show Bookmarks" button ---
 showBookmarksBtn.addEventListener('click', () => {
     // 1. Toggle the view state
     bookmarksViewActive = !bookmarksViewActive;
@@ -107,6 +109,26 @@ showBookmarksBtn.addEventListener('click', () => {
     showBookmarksBtn.classList.toggle('active', bookmarksViewActive);
     
     // 3. Re-render the list
+    renderResults();
+});
+
+// --- NEW: Handle click on "Owner Filter" group ---
+ownerFilterGroup.addEventListener('click', (e) => {
+    const clickedButton = e.target.closest('.bookmark-toggle');
+    if (!clickedButton) return;
+
+    // 1. Get the new filter value
+    currentOwnerFilter = clickedButton.dataset.filter;
+
+    // 2. Update button styles
+    // THIS IS THE FIX: First, remove 'active' from ALL buttons
+    ownerFilterGroup.querySelectorAll('.bookmark-toggle').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    // Then, add 'active' to ONLY the one you clicked
+    clickedButton.classList.add('active');
+    
+    // 3. Re-render the list with the filter
     renderResults();
 });
 
@@ -139,7 +161,7 @@ repoList.addEventListener('click', async (e) => {
         showBookmarksBtn.textContent = `Show Bookmarks (${bookmarks.length})`;
         
         // If we're in bookmark view, re-render the list to show the removal
-        if (bookmarksViewActive) {
+        if (bookmarksViewActive || currentOwnerFilter !== 'all') {
             renderResults();
         }
         
@@ -384,9 +406,13 @@ async function fetchData(days) {
     results.classList.add('hidden');
     repoList.innerHTML = '';
     
-    // --- NEW: Reset bookmark view on new fetch ---
+    // --- UPDATED: Only reset bookmark view on new fetch ---
     bookmarksViewActive = false;
     showBookmarksBtn.classList.remove('active');
+
+    // --- REMOVED ---
+    // We NO LONGER reset the currentOwnerFilter or the filter buttons.
+    // They will persist through the new fetch.
     // ---
 
     try {
@@ -396,7 +422,6 @@ async function fetchData(days) {
             throw new Error(`API Search error: ${errorData.message}`);
         }
         
-        // --- UPDATED: Save to global list ---
         currentRepoList = await res.json(); 
         
         if (!currentRepoList || currentRepoList.length === 0) {
@@ -404,7 +429,8 @@ async function fetchData(days) {
             return;
         }
         
-        // --- UPDATED: Call new render function ---
+        // renderResults() will now be called, and it will
+        // automatically apply the *persistent* currentOwnerFilter
         renderResults(); 
 
     } catch (err) {
@@ -415,29 +441,69 @@ async function fetchData(days) {
     }
 }
 
-// --- NEW: This function decides WHAT to display ---
+
 function renderResults() {
-    if (bookmarksViewActive) {
-        resultsTitle.textContent = `Bookmarked Repos (${bookmarks.length})`;
-        if (bookmarks.length === 0) {
-            showError("You haven't bookmarked any repos yet.");
-            repoList.innerHTML = ''; // Clear list
-        } else {
-            showError(null); // Clear error
-            displayResults(bookmarks);
-        }
+    // 1. Determine the source list
+    const sourceList = bookmarksViewActive ? bookmarks : currentRepoList;
+    
+    // 2. NEW: Apply the owner filter
+    let filteredList;
+    if (currentOwnerFilter === 'all') {
+        filteredList = sourceList;
     } else {
-        resultsTitle.textContent = `Top Repos (Sorted by Avg. Velocity)`;
-        showError(null); // Clear error
-        displayResults(currentRepoList);
+        // The repo.owner.type is either 'User' or 'Organization'
+        filteredList = sourceList.filter(repo => repo.owner.type === currentOwnerFilter);
+    }
+
+    // 3. Update titles and render
+    if (bookmarksViewActive) {
+        const filterText = currentOwnerFilter === 'all' ? '' : ` (${currentOwnerFilter}s)`;
+        resultsTitle.textContent = `Bookmarked Repos${filterText} (${filteredList.length} / ${bookmarks.length})`;
+    } else {
+        const filterText = currentOwnerFilter === 'all' ? '' : ` (${currentOwnerFilter}s)`;
+        resultsTitle.textContent = `Top Repos${filterText} (Sorted by Avg. Velocity)`;
+    }
+
+    // 4. Handle empty states (NEW LOGIC)
+    if (filteredList.length === 0) {
+        // List is empty. Why?
+        repoList.innerHTML = ''; // Always clear the list
+        
+        if (bookmarksViewActive) {
+            if (bookmarks.length === 0) {
+                // Case A: Bookmark list is empty
+                showError("You haven't bookmarked any repos yet.");
+            } else {
+                // Case B: Bookmark list has items, but filter cleared them
+                showError(`No bookmarks found matching the "${currentOwnerFilter}" filter.`);
+            }
+        } else {
+            // We are in the main repo list view
+            if (currentRepoList.length === 0) {
+                // Case C: No search has been run yet.
+                // `fetchData` handles the error if the search *returns* empty.
+                // So here, we just show nothing.
+                showError(null); // Clear any pre-existing error
+            } else {
+                // Case D: A search was run, but the filter cleared the list
+                showError(`No repos found matching the "${currentOwnerFilter}" filter.`);
+            }
+        }
+        
+    } else {
+        // List has items, render them
+        showError(null); // Clear any error
+        displayResults(filteredList); // Pass the FINAL filtered list
     }
     
-    // Make sure the results section is visible
-    if ((bookmarksViewActive && bookmarks.length > 0) || (!bookmarksViewActive && currentRepoList.length > 0)) {
+    // 5. Manage visibility
+    if (filteredList.length > 0) {
         results.classList.remove('hidden');
     } else {
-        // This handles showing the "no bookmarks" error
-        results.classList.add('hidden');
+        // This handles showing the "no bookmarks" or "filter empty" error
+        if (showError.textContent) { // Only hide if there's an error msg
+             results.classList.add('hidden');
+        }
     }
 }
 
@@ -483,25 +549,25 @@ function displayResults(repos) {
         // --- NEW: Check if this repo is bookmarked ---
         const isBookmarked = bookmarks.some(b => b.id === repo.id);
         
+        // --- NEW: Get owner type for a small badge ---
+        const ownerTypeBadge = repo.owner.type === 'Organization' 
+            ? `<span class="text-xs font-semibold bg-blue-900 text-blue-300 px-2 py-0.5 rounded ml-2">Org</span>`
+            : '';
+        
         li.innerHTML = `
-            <!-- --- UPDATED: Added items-start --- -->
             <div class="flex justify-between items-start">
-                <!-- --- UPDATED: Added wrapper div --- -->
                 <div class="flex items-center space-x-2">
-                    <!-- --- NEW: Bookmark Button --- -->
                     <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" data-repo-id="${repo.id}">
-                        <!-- Empty Icon -->
                         <svg class="icon-empty w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 11.186 0Z" />
                         </svg>
-                        <!-- Filled Icon -->
                         <svg class="icon-filled w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                          <path fill-rule="evenodd" d="M6.32 2.577a49.255 49.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21L12 17.25 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z" clip-rule="evenodd" />
+                          <path fill-rule="evenodd" d="M6.32 2.577a48.255 48.255 0 0 1 11.36 0c1.497.174 2.57 1.46 2.57 2.93V21L12 17.25 3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93Z" clip-rule="evenodd" />
                         </svg>
                     </button>
                     
                     <a href="${repo.html_url}" target="_blank" class="text-xl font-bold text-[#e9de97] hover:text-[#d9ce8a] hover:underline">${repo.full_name}</a>
-                </div>
+                    ${ownerTypeBadge} </div>
                 <div class="text-right">
                     <div class="text-xl font-bold text-[#7592fd]">${velocity}</div>
                     <div class="text-xs text-gray-400">avg. stars / day</div>

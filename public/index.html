@@ -6,12 +6,10 @@
     <meta name="theme-color" content="#000000"> 
     <title>Spark-Finder</title>
 
-    <!-- Stylesheets -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="floating-char.js" type="module" defer></script>
@@ -19,34 +17,20 @@
 
 <body class="min-h-screen flex items-center justify-center py-12">
 
-    <!-- LAYER 0: The Fullscreen Background -->
     <div class="site-background"></div>
 
-    <!-- 
-      --- NEW: LAYER 1 ---
-      This is the new canvas for drawing lines
-    -->
     <canvas id="line-canvas"></canvas>
 
-    <!-- LAYER 2: The floating characters -->
     <div id="character-container"></div>
 
-    <!-- 
-      LAYER 3: Your main card
-      (All your page content is safe inside this div)
-    -->
     <div id="main-card" class="w-full max-w-3xl rounded-lg shadow-lg m-4 border border-gray-700">
         
-        <!-- NEW SANDWICH LAYER 1: The Opaque Texture -->
         <div class="card-background-texture">
 
-            <!-- NEW SANDWICH LAYER 2: The Transparent Tint -->
             <div class="card-tint">
 
-                <!-- NEW SANDWICH LAYER 3: The Content -->
                 <div class="card-content">
 
-                    <!-- All your content goes inside here -->
                     <h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6">
                         <span id="typewriter-text"></span><span class="blinking-cursor"></span>
                     </h1>
@@ -71,29 +55,46 @@
                                 All Time
                             </button>
                             <div class="relative">
-                    <button id="custom-btn-trigger" class="timeframe-btn w-full rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
-                        Custom
-                    </button>
-                    
-                    <input type="number" 
-                           id="custom-days-input" 
-                           value="120" 
-                           class="absolute inset-0 w-full h-full rounded-md bg-gray-800 text-gray-200 text-center text-sm font-medium border-3 border-blue-500 focus:ring-2 focus:ring-blue-500 hidden">
-                </div>
+                                <button id="custom-btn-trigger" class="timeframe-btn w-full rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                                    Custom
+                                </button>
+                                
+                                <input type="number" 
+                                       id="custom-days-input" 
+                                       value="120" 
+                                       class="absolute inset-0 w-full h-full rounded-md bg-gray-800 text-gray-200 text-center text-sm font-medium border-3 border-blue-500 focus:ring-2 focus:ring-blue-500 hidden">
+                            </div>
             
+                          </div>
                         </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+
+                            <div id="owner-filter-group" class="grid grid-cols-3 gap-2">
+                                <button data-filter="all" class="bookmark-toggle active">
+                                    All
+                                </button>
+                                <button data-filter="User" class="bookmark-toggle">
+                                    Users
+                                </button>
+                                <button data-filter="Organization" class="bookmark-toggle">
+                                    Orgs
+                                </button>
+                            </div>
+
+                            <button id="showBookmarksBtn" class="bookmark-toggle">
+                                Show Bookmarks (0)
+                            </button>
                         </div>
-                        <button id="showBookmarksBtn" class="bookmark-toggle">
-                            Show Bookmarks (0)
-                        </button>
-            
+                            
+
                         <button id="fetchButton" class="w-full px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors btn-pulse-glow">
                             Find Trending Projects
                         </button>
                     </div>
             
                     <div id="loading" class="text-center hidden my-8">
-                        <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w_2.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -107,18 +108,10 @@
                             Trending Report
                         </h2>
                         <ul id="repo-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                            <!-- Results go here -->
-                        </ul>
+                            </ul>
                     </div>
 
-                </div> <!-- End .card-content -->
-            </div> <!-- End .card-tint -->
-        </div> <!-- End .card-background-texture -->
-        
-    </div> <!-- This is the closing tag for #main-card -->
-
-    <!-- app.js is loaded at the end for faster page load -->
-    <script src="app.js" type="module" defer></script>
+                </div> </div> </div> </div> <script src="app.js" type="module" defer></script>
     
 </body>
 </html>
