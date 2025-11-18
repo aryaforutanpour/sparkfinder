@@ -24,15 +24,13 @@ let currentRepoList = [];
 let bookmarksViewActive = false; 
 let currentOwnerFilter = 'all'; 
 
-// --- NEW: Timeframe State ---
-let lastSearchedTimeframe = null; // Stores the 'days' value of the last *search*
+// --- Timeframe State ---
+let lastSearchedTimeframe = null; 
 
 
 // --- 2. EVENT LISTENERS ---
 
-// --- NEW HELPER FUNCTION ---
-// This function checks if the *currently selected* timeframe 
-// is different from the *last searched* timeframe.
+// --- HELPER FUNCTION ---
 function checkTimeframeChanged() {
     let selectedDays;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
@@ -45,12 +43,9 @@ function checkTimeframeChanged() {
     }
 
     if (isNaN(selectedDays) || selectedDays < 1) {
-        selectedDays = 30; // Default case
+        selectedDays = 30; 
     }
 
-    // The Core Logic:
-    // Only show the button if the selected time is different
-    // from the last time we clicked "Find".
     if (selectedDays === lastSearchedTimeframe) {
         fetchButton.classList.add('hidden');
         fetchButton.classList.remove('btn-pulse-glow');
@@ -60,7 +55,7 @@ function checkTimeframeChanged() {
     }
 }
 
-// --- UPDATED: Handles clicks on 7, 30, 90, All Time ---
+// --- Handles clicks on 7, 30, 90, All Time ---
 timeframeGroup.addEventListener('click', (e) => {
     const clickedButton = e.target.closest('.timeframe-btn');
     
@@ -78,11 +73,10 @@ timeframeGroup.addEventListener('click', (e) => {
     
     clickedButton.classList.add('active-btn');
 
-    // Replaced old logic with new check
     checkTimeframeChanged();
 });
 
-// --- UPDATED: Handles click on the "Custom" button facade ---
+// --- Handles click on the "Custom" button facade ---
 customBtnTrigger.addEventListener('click', () => {
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => {
         btn.classList.remove('active-btn');
@@ -94,23 +88,20 @@ customBtnTrigger.addEventListener('click', () => {
     customDaysInput.focus();
     customDaysInput.select();
     
-    // Replaced old logic with new check
     checkTimeframeChanged();
 });
 
-// --- UPDATED: Handles typing in the custom input box ---
+// --- Handles typing in the custom input box ---
 customDaysInput.addEventListener('input', () => {
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => {
         btn.classList.remove('active-btn');
     });
     
-    // Replaced old logic with new check
     checkTimeframeChanged();
 });
 
-// --- UPDATED: Handles click on the main "Find" button ---
+// --- Handles click on the main "Find" button ---
 fetchButton.addEventListener('click', () => {
-    // 1. Get the currently selected days
     let days;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
 
@@ -128,9 +119,6 @@ fetchButton.addEventListener('click', () => {
         }
     }
     
-    // 2. Call fetchData.
-    // fetchData will now be responsible for hiding the button
-    // and setting the new 'lastSearchedTimeframe'.
     fetchData(days);
 });
 
@@ -156,7 +144,7 @@ ownerFilterGroup.addEventListener('click', (e) => {
     renderResults();
 });
 
-// Handles clicks inside the results list (Buzz, Velocity, Chart, AND BOOKMARKS)
+// --- Handles clicks inside the results list ---
 repoList.addEventListener('click', async (e) => {
 
     // --- Handle "Bookmark" clicks (MUST BE FIRST) ---
@@ -182,36 +170,6 @@ repoList.addEventListener('click', async (e) => {
             renderResults();
         }
         return; 
-    }
-
-    // --- Handle "Check Velocity" clicks ---
-    if (e.target.classList.contains('calculate-true-velocity-btn')) {
-        const button = e.target;
-        const repoName = button.dataset.repo;
-        const targetId = button.dataset.targetId;
-        const deepDiveDays = button.dataset.deepDiveDays;
-        
-        const container = document.getElementById(`true-velocity-container-${targetId}`);
-        container.innerHTML = `<span class="text-sm text-gray-400">Calculating...</span>`;
-
-        try {
-            const res = await fetch(`/api/true-velocity?repo=${repoName}&checkDays=${deepDiveDays}`);
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Failed to fetch");
-            }
-            const data = await res.json();
-            const dayText = data.daysScanned === 1 ? 'day' : 'days';
-            container.innerHTML = `
-                <div class="text-right">
-                    <div class="text-xs font-bold text-[#7592fd]">${data.starsInPeriod}</div>
-                    <div class="text-xs text-gray-400">stars in last ${data.daysScanned} ${dayText}</div>
-                </div>
-            `;
-        } catch (err) {
-            console.error('True velocity fetch error:', err);
-            container.innerHTML = `<span class="text-sm text-red-400">Error</span>`;
-        }
     }
 
     // --- Handle "Check Buzz" clicks ---
@@ -412,20 +370,15 @@ window.addEventListener('load', () => {
         console.error("Spark-Finder: Typewriter element not found!");
     }
     
-    // On page load, check the timeframe.
-    // Since lastSearchedTimeframe is null, this will show the button.
     checkTimeframeChanged();
 });
 
 // --- 4. CORE FUNCTIONS ---
 
-// --- UPDATED: fetchData ---
 async function fetchData(days) {
-    // --- NEW: Set state and hide button immediately ---
     lastSearchedTimeframe = days;
     fetchButton.classList.add('hidden');
     fetchButton.classList.remove('btn-pulse-glow');
-    // ---
 
     showLoading(true);
     showError(null);
@@ -515,35 +468,23 @@ function renderResults() {
 }
 
 
+//
+// =================================================================
+// === THIS IS THE ONLY FUNCTION THAT HAS CHANGED                ===
+// =================================================================
+//
 function displayResults(repos) {
     repoList.innerHTML = '';
 
     let selectedTimeframe;
-    let deepDiveDays;
-    let deepDiveText;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
     const isCustom = !customDaysInput.classList.contains('hidden');
 
     if (isCustom) {
         selectedTimeframe = parseInt(customDaysInput.value) || 1;
-        if (selectedTimeframe === 1) {
-            deepDiveDays = 0.5;
-            deepDiveText = "12-Hour";
-        } else {
-            deepDiveDays = Math.round(selectedTimeframe / 4);
-            if (deepDiveDays < 1) { deepDiveDays = 1; } 
-            deepDiveText = `${deepDiveDays}-Day`;
-        }
     } else {
         const activeValue = activeBtn ? activeBtn.dataset.value : '30';
         selectedTimeframe = (activeValue === 'all') ? 9999 : parseInt(activeValue);
-        if (selectedTimeframe === 7) {
-            deepDiveDays = 1;
-            deepDiveText = "24-Hour";
-        } else {
-            deepDiveDays = 7;
-            deepDiveText = "7-Day";
-        }
     }
     
     repos.forEach(repo => {
@@ -557,6 +498,7 @@ function displayResults(repos) {
             ? `<span class="text-xs font-semibold bg-blue-900 text-blue-300 px-2 py-0.5 rounded ml-2">Org</span>`
             : '';
         
+        // --- THIS IS THE MODIFIED HTML ---
         li.innerHTML = `
             <div class="flex justify-between items-start">
                 <div class="flex items-center space-x-2">
@@ -588,6 +530,14 @@ function displayResults(repos) {
                         <span class="text-gray-400 ml-1">stars</span>
                     </div>
                     <span class="text-gray-600">|</span>
+
+                    <div class="flex items-center">
+    <img src="/assets/git-fork.svg" alt="Fork icon" class="w-4 h-4 mr-1">
+    <span class="font-medium">${repo.forks_count.toLocaleString()}</span>
+    <span class="text-gray-400 ml-1">forks</span>
+</div>
+                    <span class="text-gray-600">|</span>
+
                     <div class="flex items-center">
                         <svg class="w-4 h-4 text-gray-400 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <span class="text-gray-400">${repo.daysOld} ${repo.daysOld === 1 ? 'day' : 'days'}</span>
@@ -627,16 +577,7 @@ function displayResults(repos) {
                         </button>
                     </div>
 
-                    <div id="true-velocity-container-${repo.id}" class="min-w-[100px] flex justify-center">
-                        <button 
-                            data-repo="${repo.full_name}" 
-                            data-target-id="${repo.id}"
-                            data-deep-dive-days="${deepDiveDays}"
-                            class="calculate-true-velocity-btn text-xs text-[#c9587c] hover:text-[#e39ab0] font-medium py-1 px-2 rounded-lg hover:bg-gray-700">
-                            ${deepDiveText} Velocity
-                        </button>
                     </div>
-                </div>
             </div>
             
             <div id="buzz-results-container-${repo.id}" class="mt-3 pt-3 border-t border-gray-700 hidden">
