@@ -355,6 +355,11 @@ input[type="number"] {
     transition: all 0.2s ease-in-out;
 }
 
+/* --- Blue Button Hover Effect --- */
+.bookmark-toggle:hover {
+    /* This is your blue color (#7592fd) at 10% opacity */
+    background-color: rgba(117, 146, 253, 0.1);
+}
 /* This is the "active" state for the toggle */
 .bookmark-toggle.active {
     background-color: var(--laude-text);
@@ -386,4 +391,29 @@ input[type="number"] {
 }
 .bookmark-btn.bookmarked .icon-empty {
     display: none; /* Hide empty icon when bookmarked */
+}
+
+/* --- Pink Topic Filter Buttons (Mirrors .bookmark-toggle) --- */
+.topic-toggle {
+    /* Dimensions are now handled by HTML classes (!h-11, etc.) */
+    border: 2px solid #c9587c; /* Buzz Pink Border */
+    color: #c9587c;            /* Buzz Pink Text */
+    font-family: 'Laude Title', 'Inter', sans-serif;
+    
+    /* Removed font-size so it respects 'text-sm' in HTML */
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease-in-out;
+    background-color: transparent;
+    white-space: nowrap;       
+}
+
+.topic-toggle:hover {
+    background-color: rgba(201, 88, 124, 0.1); /* Subtle pink tint on hover */
+}
+
+/* The Active (Filled) State */
+.topic-toggle.active {
+    background-color: #c9587c;
+    color: white;
 }

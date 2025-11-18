@@ -18,9 +18,11 @@ function logRateLimit(response) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Endpoint 1: The fast search ---
+// --- Endpoint 1: The fast search (Now with Auto-Tagging) ---
 app.get('/api/search', async (req, res) => {
-    const { days } = req.query;
+    const { days, page } = req.query; 
+    const pageNum = page || 1;
+
     const pat = process.env.GITHUB_PAT;
     if (!pat) return res.status(500).json({ message: 'Server error: GitHub PAT not configured.' });
 
@@ -30,15 +32,41 @@ app.get('/api/search', async (req, res) => {
         return date.toISOString().split('T')[0];
     }
 
+    // --- NEW: Auto-Tagging Logic ---
+    function detectCategory(repo) {
+        // Combine name, description, and topics into one big lowercase string to search
+        const text = (
+            (repo.name || '') + ' ' + 
+            (repo.description || '') + ' ' + 
+            (repo.topics || []).join(' ')
+        ).toLowerCase();
+
+        // 1. AI/ML Keywords
+        if (text.match(/ai|gpt|llm|machine learning|neural|diffusion|transformer|rag|openai|llama|anthropic|deep learning|computer vision|nlp/)) {
+            return 'ai';
+        }
+        // 2. Web Keywords
+        if (text.match(/react|nextjs|vue|svelte|tailwind|css|html|web|frontend|backend|api|http|server|browser|wasm/)) {
+            return 'web';
+        }
+        // 3. Tools Keywords
+        if (text.match(/cli|tool|library|sdk|compiler|parser|utility|automation|devops|docker|kubernetes|terminal/)) {
+            return 'tools';
+        }
+        
+        return 'other';
+    }
+
     const createdDate = getPastDate(days);
     const query = `created:>=${createdDate}`;
     const sort = 'stars';
     const order = 'desc';
     const per_page = 50;
 
-    const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=${sort}&order=${order}&per_page=${per_page}`;
+    const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=${sort}&order=${order}&per_page=${per_page}&page=${pageNum}`;
     
-    console.log(`[Spark-Finder] Sending query to GitHub: ${url}`);
+    console.log(`[Spark-Finder] Fetching Page ${pageNum} from GitHub...`);
+    
     const headers = {
         'Accept': 'application/vnd.github.v3+json',
         'Authorization': `token ${pat}`,
@@ -48,14 +76,14 @@ app.get('/api/search', async (req, res) => {
     try {
         const githubResponse = await fetch(url, { headers });
         logRateLimit(githubResponse);
-        console.log(`[Spark-Finder] GitHub responded with status: ${githubResponse.status}`);
+        
         if (!githubResponse.ok) {
             const errorData = await githubResponse.json();
             return res.status(githubResponse.status).json({ message: errorData.message });
         }
         
         const data = await githubResponse.json();
-        console.log(`[Spark-Finder] Found ${data.items.length} items to analyze.`);
+        console.log(`[Spark-Finder] Page ${pageNum} returned ${data.items.length} items.`);
 
         const today = new Date();
         const reposWithVelocity = data.items.map(repo => {
@@ -64,7 +92,15 @@ app.get('/api/search', async (req, res) => {
             const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             const velocityScore = repo.stargazers_count / diffDays;
             
-            return { ...repo, daysOld: diffDays, velocityScore: velocityScore };
+            // --- HERE WE ADD THE CATEGORY ---
+            const category = detectCategory(repo);
+            
+            return { 
+                ...repo, 
+                daysOld: diffDays, 
+                velocityScore: velocityScore,
+                category: category // <--- Sending this to frontend
+            };
         });
 
         const sortedRepos = reposWithVelocity.sort((a, b) => b.velocityScore - a.velocityScore);
@@ -95,12 +131,9 @@ app.get('/api/social-buzz', async (req, res) => {
 });
 
 // 
-// =================================================================
-// === THIS IS THE NEW HIGH-PERFORMANCE (PARALLEL) ENDPOINT      ===
-// =================================================================
-//
+// --- Endpoint 3: High-Performance Star History ---
+// 
 app.get('/api/star-history', async (req, res) => {
-    // 1. Get all data from frontend
     const { repo, days, daysOld } = req.query;
     const pat = process.env.GITHUB_PAT;
 
@@ -117,7 +150,6 @@ app.get('/api/star-history', async (req, res) => {
         'User-Agent': 'Spark-Finder-App'
     };
 
-    // 2. Determine the exact number of days to chart
     const repoAge = parseInt(daysOld, 10);
     let searchDays = parseInt(days, 10);
     
@@ -132,7 +164,6 @@ app.get('/api/star-history', async (req, res) => {
 
     console.log(`[Spark-Finder] Processing star history for ${repo} (Charting last ${daysToChart} days)`);
 
-    // 3. Create the buckets and labels on the server
     const labels = [];
     const today = new Date();
     for (let i = daysToChart - 1; i >= 0; i--) {
@@ -145,7 +176,6 @@ app.get('/api/star-history', async (req, res) => {
     const now = new Date();
 
     try {
-        // --- NEW STEP 1: Get Total Stars / Pages ---
         const repoRes = await fetch(`https://api.github.com/repos/${repo}`, { headers });
         logRateLimit(repoRes);
         if (!repoRes.ok) {
@@ -156,12 +186,11 @@ app.get('/api/star-history', async (req, res) => {
         const totalPages = Math.ceil(totalStars / 100);
 
         if (totalPages === 0) {
-            return res.json({ labels: labels, data: dailyStarCounts }); // Send back empty chart
+            return res.json({ labels: labels, data: dailyStarCounts }); 
         }
 
-        // --- NEW STEP 2: Create array of all pages to fetch ---
         const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
-        const BATCH_SIZE = 10; // Fetch 10 pages concurrently
+        const BATCH_SIZE = 10; 
         let allStars = [];
         
         console.log(`[Spark-Finder] Total pages to fetch: ${totalPages}. Starting parallel batches...`);
@@ -176,7 +205,6 @@ app.get('/api/star-history', async (req, res) => {
 
             const responses = await Promise.all(fetchPromises);
 
-            // Check for errors and log rate limits for each request
             for (const response of responses) {
                 logRateLimit(response);
                 if (!response.ok) {
@@ -184,21 +212,16 @@ app.get('/api/star-history', async (req, res) => {
                 }
             }
             
-            // Get JSON data from all responses
             const dataPromises = responses.map(res => res.json());
             const dataArray = await Promise.all(dataPromises);
             
-            // Add all stars from this batch to our main list
             allStars.push(...dataArray.flat());
-        } // End of batch loop
+        } 
 
         console.log(`[Spark-Finder] All ${totalPages} pages fetched. Total stars processed: ${allStars.length}`);
 
-        // --- NEW STEP 3: Process the *full* list of stars ---
         for (const star of allStars) {
             const starDate = new Date(star.starred_at);
-            
-            // Only bucket stars that are within our chart's timeframe
             if (starDate >= startDate) {
                 const diffTime = now.getTime() - starDate.getTime();
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -207,15 +230,10 @@ app.get('/api/star-history', async (req, res) => {
                     dailyStarCounts[daysToChart - 1 - diffDays]++;
                 }
             } else {
-                // Since the list is sorted, we can stop as soon as we
-                // find a star that is too old. This is a micro-optimization.
                 break;
             }
         }
 
-        console.log(`[Spark-Finder] Bucketing complete. Sending chart data to frontend.`);
-        
-        // 4. Send the *small, processed* data back
         res.json({
             labels: labels,
             data: dailyStarCounts
@@ -290,7 +308,7 @@ app.get('/api/profile', async (req, res) => {
             login: userData.login,
             name: userData.name || null,
             type: ownerType,
-            bio: userData.bio || null,
+            bio: userData.bio || null, 
             company: userData.company || null,
             location: userData.location || null,
             readmeContent: readmeContent 
