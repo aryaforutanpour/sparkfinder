@@ -47,7 +47,7 @@ app.get('/api/search', async (req, res) => {
 
     try {
         const githubResponse = await fetch(url, { headers });
-        logRateLimit(githubResponse); // Log the rate limit
+        logRateLimit(githubResponse);
         console.log(`[Spark-Finder] GitHub responded with status: ${githubResponse.status}`);
         if (!githubResponse.ok) {
             const errorData = await githubResponse.json();
@@ -64,7 +64,6 @@ app.get('/api/search', async (req, res) => {
             const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             const velocityScore = repo.stargazers_count / diffDays;
             
-            // Note: repo.forks_count is already here!
             return { ...repo, daysOld: diffDays, velocityScore: velocityScore };
         });
 
@@ -84,99 +83,143 @@ app.get('/api/social-buzz', async (req, res) => {
     if (!repo) {
         return res.status(400).json({ message: 'Missing "repo" query parameter.' });
     }
-
     const daysAgo = parseInt(days) || 30;
-
     console.log(`[Social Buzz] Checking mentions for: ${repo} (Last ${daysAgo} days)`);
-
     try {
         const buzzData = await fetchAllBuzz(repo, daysAgo);
-        res.json({
-            repo: repo,
-            ...buzzData 
-        });
-
+        res.json({ repo: repo, ...buzzData });
     } catch (err) {
         console.error(`[Social Buzz] Final error for ${repo}:`, err);
         res.status(500).json({ message: err.message });
     }
 });
 
-// --- Endpoint 3: Get Star History (Paginated) ---
-// (This is the one for Trajectory - untouched)
+// 
+// =================================================================
+// === THIS IS THE NEW HIGH-PERFORMANCE (PARALLEL) ENDPOINT      ===
+// =================================================================
+//
 app.get('/api/star-history', async (req, res) => {
-    const { repo, days } = req.query;
+    // 1. Get all data from frontend
+    const { repo, days, daysOld } = req.query;
     const pat = process.env.GITHUB_PAT;
 
-    if (!repo || !days) {
-        return res.status(400).json({ message: 'Repo and days are required.' });
+    if (!repo || !days || !daysOld) {
+        return res.status(400).json({ message: 'Repo, days, and daysOld are required.' });
     }
     if (!pat) {
         return res.status(500).json({ message: 'Server error: GitHub PAT not configured.' });
     }
 
-    const daysAgo = parseInt(days, 10);
-    if (isNaN(daysAgo) || daysAgo < 1) {
-        return res.status(400).json({ message: 'Invalid day range.' });
-    }
+    const headers = {
+        'Accept': 'application/vnd.github.v3.star+json',
+        'Authorization': `token ${pat}`,
+        'User-Agent': 'Spark-Finder-App'
+    };
+
+    // 2. Determine the exact number of days to chart
+    const repoAge = parseInt(daysOld, 10);
+    let searchDays = parseInt(days, 10);
+    
+    if (isNaN(searchDays) || searchDays > 365) searchDays = 30;
+    if (searchDays < 1) searchDays = 1;
+
+    let daysToChart = Math.min(searchDays, repoAge);
+    if (daysToChart < 1) daysToChart = 1;
+
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysAgo);
+    startDate.setDate(startDate.getDate() - daysToChart);
 
-    console.log(`[Spark-Finder] Fetching paginated star history for ${repo} since ${startDate.toISOString()}`);
+    console.log(`[Spark-Finder] Processing star history for ${repo} (Charting last ${daysToChart} days)`);
 
-    let allTimestamps = [];
-    let page = 1;
-    let keepFetching = true;
+    // 3. Create the buckets and labels on the server
+    const labels = [];
+    const today = new Date();
+    for (let i = daysToChart - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+    }
+    
+    let dailyStarCounts = new Array(daysToChart).fill(0);
+    const now = new Date();
 
     try {
-        while (keepFetching) {
-            const url = `https://api.github.com/repos/${repo}/stargazers?per_page=100&page=${page}&direction=desc`;
+        // --- NEW STEP 1: Get Total Stars / Pages ---
+        const repoRes = await fetch(`https://api.github.com/repos/${repo}`, { headers });
+        logRateLimit(repoRes);
+        if (!repoRes.ok) {
+            throw new Error(`Failed to fetch repo data: ${repoRes.status}`);
+        }
+        const repoData = await repoRes.json();
+        const totalStars = repoData.stargazers_count;
+        const totalPages = Math.ceil(totalStars / 100);
+
+        if (totalPages === 0) {
+            return res.json({ labels: labels, data: dailyStarCounts }); // Send back empty chart
+        }
+
+        // --- NEW STEP 2: Create array of all pages to fetch ---
+        const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
+        const BATCH_SIZE = 10; // Fetch 10 pages concurrently
+        let allStars = [];
+        
+        console.log(`[Spark-Finder] Total pages to fetch: ${totalPages}. Starting parallel batches...`);
+
+        for (let i = 0; i < totalPages; i += BATCH_SIZE) {
+            const batchPageNumbers = pageNumbers.slice(i, i + BATCH_SIZE);
             
-            const response = await fetch(url, {
-                headers: {
-                    'Accept': 'application/vnd.github.v3.star+json',
-                    'Authorization': `token ${pat}`,
-                    'User-Agent': 'Spark-Finder-App'
-                }
+            const fetchPromises = batchPageNumbers.map(page => {
+                const url = `https://api.github.com/repos/${repo}/stargazers?per_page=100&page=${page}&direction=desc`;
+                return fetch(url, { headers });
             });
 
-            logRateLimit(response); 
+            const responses = await Promise.all(fetchPromises);
 
-            if (!response.ok) {
-                if (response.status === 404) {
-                    keepFetching = false;
-                    break;
+            // Check for errors and log rate limits for each request
+            for (const response of responses) {
+                logRateLimit(response);
+                if (!response.ok) {
+                    throw new Error(`GitHub API error in batch: ${response.statusText}`);
                 }
-                throw new Error(`GitHub API error: ${response.statusText}`);
             }
+            
+            // Get JSON data from all responses
+            const dataPromises = responses.map(res => res.json());
+            const dataArray = await Promise.all(dataPromises);
+            
+            // Add all stars from this batch to our main list
+            allStars.push(...dataArray.flat());
+        } // End of batch loop
 
-            const data = await response.json();
+        console.log(`[Spark-Finder] All ${totalPages} pages fetched. Total stars processed: ${allStars.length}`);
 
-            if (data.length === 0) {
-                keepFetching = false;
+        // --- NEW STEP 3: Process the *full* list of stars ---
+        for (const star of allStars) {
+            const starDate = new Date(star.starred_at);
+            
+            // Only bucket stars that are within our chart's timeframe
+            if (starDate >= startDate) {
+                const diffTime = now.getTime() - starDate.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays >= 0 && diffDays < daysToChart) {
+                    dailyStarCounts[daysToChart - 1 - diffDays]++;
+                }
+            } else {
+                // Since the list is sorted, we can stop as soon as we
+                // find a star that is too old. This is a micro-optimization.
                 break;
             }
+        }
 
-            let lastStarDateInPage = null;
-            for (const star of data) {
-                const starDate = new Date(star.starred_at);
-                
-                if (starDate >= startDate) {
-                    allTimestamps.push(star.starred_at);
-                }
-                lastStarDateInPage = starDate;
-            }
-
-            if (lastStarDateInPage === null || lastStarDateInPage < startDate || data.length < 100) {
-                keepFetching = false;
-            } else {
-                page++;
-            }
-        } // end while loop
-
-        console.log(`[Spark-Finder] Found ${allTimestamps.length} stars for ${repo} in the last ${days} days.`);
+        console.log(`[Spark-Finder] Bucketing complete. Sending chart data to frontend.`);
         
-        res.json({ timestamps: allTimestamps });
+        // 4. Send the *small, processed* data back
+        res.json({
+            labels: labels,
+            data: dailyStarCounts
+        });
 
     } catch (err) {
         console.error(`[Spark-Finder] Error fetching paginated star history:`, err.message);
@@ -184,7 +227,8 @@ app.get('/api/star-history', async (req, res) => {
     }
 });
 
-// --- Endpoint 4: Get Profile Info (NOW INCLUDES README) ---
+
+// --- Endpoint 4: Get Profile Info ---
 app.get('/api/profile', async (req, res) => {
     const { repo } = req.query; 
     const pat = process.env.GITHUB_PAT;
@@ -246,7 +290,7 @@ app.get('/api/profile', async (req, res) => {
             login: userData.login,
             name: userData.name || null,
             type: ownerType,
-            bio: userData.bio || null, 
+            bio: userData.bio || null,
             company: userData.company || null,
             location: userData.location || null,
             readmeContent: readmeContent 

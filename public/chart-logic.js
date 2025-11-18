@@ -1,4 +1,4 @@
-// --- public/char-logic.js ---
+// --- public/chart-logic.js ---
 // This file contains all logic for creating and managing the star trajectory charts.
 
 const chartInstances = {};
@@ -19,7 +19,7 @@ async function toggleChart(button, repoName, targetId, timeframe, totalStars, da
         existingChart.destroy();
         delete chartInstances[targetId];
         chartContainer.classList.add('hidden');
-        button.textContent = "Show Trajectory";
+        button.textContent = "Trajectory";
     } else {
         // If no chart, create one
         if (chartLoaders[targetId]) return;
@@ -28,14 +28,14 @@ async function toggleChart(button, repoName, targetId, timeframe, totalStars, da
         button.textContent = "Loading...";
 
         try {
-            // 1. Fetch the REAL data from your server, passing the timeframe
-            const { timestamps } = await fetchStarHistory(repoName, timeframe);
+            // 1. Fetch the PRE-PROCESSED data from your server
+            const chartData = await fetchStarHistory(repoName, timeframe, daysOld);
             
             // 2. Show the container
             chartContainer.classList.remove('hidden');
 
-            // 3. Draw the chart, passing all data
-            drawChart(timestamps, targetId, timeframe, totalStars, daysOld);
+            // 3. Draw the chart (this is now much simpler)
+            drawChart(chartData, targetId);
             
             button.textContent = "Hide Trajectory";
 
@@ -50,14 +50,14 @@ async function toggleChart(button, repoName, targetId, timeframe, totalStars, da
 }
 
 /**
- * REAL API FUNCTION
- * This calls your new backend endpoint, passing the timeframe as 'days'.
+ * OPTIMIZED API FUNCTION
+ * This calls your backend, passing all necessary info for the server to process.
  */
-async function fetchStarHistory(repoName, timeframe) {
-    console.log(`Fetching REAL star history for: ${repoName} over ${timeframe} days`);
+async function fetchStarHistory(repoName, timeframe, daysOld) {
+    console.log(`Fetching PROCESSED star history for: ${repoName}`);
     
-    // Pass 'timeframe' as the 'days' query parameter
-    const response = await fetch(`/api/star-history?repo=${repoName}&days=${timeframe}`);
+    // Pass 'timeframe' AND 'daysOld' to the backend
+    const response = await fetch(`/api/star-history?repo=${repoName}&days=${timeframe}&daysOld=${daysOld}`);
     
     if (!response.ok) {
         const errorData = await response.json();
@@ -65,85 +65,52 @@ async function fetchStarHistory(repoName, timeframe) {
     }
     
     const data = await response.json();
-    return data; // Returns { timestamps: [...] }
+    return data; // Returns { labels: [...], data: [...] }
 }
 
 /**
- * "SMART" DRAW CHART FUNCTION - V4 (The "Trend Curve")
- * This creates a LINE CHART of *new stars per day*
- * to perfectly visualize momentum.
+ * "DUMB" DRAW CHART FUNCTION
+ * This function is now very simple. It just receives the processed
+ * labels and data from the server and draws the chart.
  */
-function drawChart(timestamps, targetId, timeframe, totalStars, daysOld) {
+function drawChart(chartData, targetId) {
     const ctx = document.getElementById(`chart-${targetId}`).getContext('2d');
     
-    // --- 1. Process the data ---
-    let searchDays = parseInt(timeframe);
-    if (isNaN(searchDays) || searchDays > 365) searchDays = 30; // Default to 30 for "All Time" or invalid
-    if (searchDays < 1) searchDays = 1;
-
-    // The chart's X-axis should be the SMALLEST of (search timeframe vs. repo age)
-    const repoAge = (isNaN(daysOld) || daysOld < 1) ? 1 : daysOld;
-    let daysToChart = Math.min(searchDays, repoAge);
-    if (daysToChart < 1) daysToChart = 1;
-
-    const labels = [];
+    // 1. Get the pre-processed data from the server
+    const { labels, data } = chartData;
     
-    // Create date labels for the X-axis
-    const today = new Date();
-    for (let i = daysToChart - 1; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-    }
-
-    // Create a "bucket" for each day. This is the data we will plot!
-    let dailyStarCounts = new Array(daysToChart).fill(0);
-    
-    // Loop through the complete list of timestamps from the server
-    timestamps.forEach(ts => {
-        const starDate = new Date(ts);
-        const now = new Date();
-        const diffTime = now.getTime() - starDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
-        // If the star happened within our chart's timeframe, add it to the bucket
-        if (diffDays >= 0 && diffDays < daysToChart) {
-            dailyStarCounts[daysToChart - 1 - diffDays]++;
-        }
-    });
-
-    // --- 2. Destroy old chart and draw new one ---
+    // 2. Destroy old chart and draw new one
     if (chartInstances[targetId]) {
         chartInstances[targetId].destroy();
     }
 
     const newChart = new Chart(ctx, {
-        type: 'line', // <--- CHANGED BACK TO 'line'
+        type: 'line', 
         data: {
-            labels: labels, 
+            labels: labels, // <-- Use server-provided labels
             datasets: [{
                 label: 'New Stars Per Day',
-                data: dailyStarCounts, // <-- Using the daily counts!
+                data: data, // <-- Use server-provided data
                 backgroundColor: 'rgba(117, 146, 253, 0.2)', // Area color
                 borderColor: '#7592fd',     // Line color
                 borderWidth: 2,
-                fill: true,     // <--- ADD THIS to fill under the line
-                tension: 0.4    // <--- ADD THIS to make the line curve
+                fill: true,     
+                tension: 0.4    
             }]
         },
         options: {
             scales: {
                 y: {
-                    beginAtZero: true, // <-- Start Y-axis at 0
+                    beginAtZero: true, 
                     ticks: { 
                         color: '#9ca3af',
-                        precision: 0 // Ensure only whole numbers
+                        precision: 0 
                     },
                     grid: { color: '#4b5563' }
                 },
                 x: {
                     ticks: { color: '#9ca3af' },
-                    grid: { color: '#4b5563' } // Re-enabled grid lines
+                    grid: { color: '#4b5563' }
                 }
             },
             plugins: {
