@@ -16,18 +16,51 @@ const customBtnTrigger = document.getElementById('custom-btn-trigger');
 const customDaysInput = document.getElementById('custom-days-input');
 let buzzDataCache = {};
 
-// --- NEW: Bookmark & Filter Constants & State ---
+// --- Bookmark & Filter Constants & State ---
 const showBookmarksBtn = document.getElementById('showBookmarksBtn');
-const ownerFilterGroup = document.getElementById('owner-filter-group'); // NEW
-let bookmarks = [];           // Stores the full repo objects
-let currentRepoList = [];   // Stores the complete list from the last fetch
-let bookmarksViewActive = false; // Are we currently viewing bookmarks?
-let currentOwnerFilter = 'all'; // NEW: 'all', 'User', or 'Organization'
+const ownerFilterGroup = document.getElementById('owner-filter-group'); 
+let bookmarks = [];           
+let currentRepoList = [];   
+let bookmarksViewActive = false; 
+let currentOwnerFilter = 'all'; 
+
+// --- NEW: Timeframe State ---
+let lastSearchedTimeframe = null; // Stores the 'days' value of the last *search*
 
 
 // --- 2. EVENT LISTENERS ---
 
-// Handles clicks on 7, 30, 90, All Time
+// --- NEW HELPER FUNCTION ---
+// This function checks if the *currently selected* timeframe 
+// is different from the *last searched* timeframe.
+function checkTimeframeChanged() {
+    let selectedDays;
+    const activeBtn = document.querySelector('#timeframe-group .active-btn');
+
+    if (!customDaysInput.classList.contains('hidden')) {
+        selectedDays = parseInt(customDaysInput.value);
+    } else {
+        const activeValue = activeBtn ? activeBtn.dataset.value : '30';
+        selectedDays = (activeValue === 'all') ? 9999 : parseInt(activeValue);
+    }
+
+    if (isNaN(selectedDays) || selectedDays < 1) {
+        selectedDays = 30; // Default case
+    }
+
+    // The Core Logic:
+    // Only show the button if the selected time is different
+    // from the last time we clicked "Find".
+    if (selectedDays === lastSearchedTimeframe) {
+        fetchButton.classList.add('hidden');
+        fetchButton.classList.remove('btn-pulse-glow');
+    } else {
+        fetchButton.classList.remove('hidden');
+        fetchButton.classList.add('btn-pulse-glow');
+    }
+}
+
+// --- UPDATED: Handles clicks on 7, 30, 90, All Time ---
 timeframeGroup.addEventListener('click', (e) => {
     const clickedButton = e.target.closest('.timeframe-btn');
     
@@ -45,11 +78,11 @@ timeframeGroup.addEventListener('click', (e) => {
     
     clickedButton.classList.add('active-btn');
 
-    fetchButton.classList.add('btn-pulse-glow');
-    fetchButton.classList.remove('hidden');
+    // Replaced old logic with new check
+    checkTimeframeChanged();
 });
 
-// Handles click on the "Custom" button facade
+// --- UPDATED: Handles click on the "Custom" button facade ---
 customBtnTrigger.addEventListener('click', () => {
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => {
         btn.classList.remove('active-btn');
@@ -61,25 +94,23 @@ customBtnTrigger.addEventListener('click', () => {
     customDaysInput.focus();
     customDaysInput.select();
     
-    fetchButton.classList.add('btn-pulse-glow');
-    fetchButton.classList.remove('hidden');
+    // Replaced old logic with new check
+    checkTimeframeChanged();
 });
 
-// Handles typing in the custom input box
+// --- UPDATED: Handles typing in the custom input box ---
 customDaysInput.addEventListener('input', () => {
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => {
         btn.classList.remove('active-btn');
     });
     
-    fetchButton.classList.add('btn-pulse-glow');
-    fetchButton.classList.remove('hidden');
+    // Replaced old logic with new check
+    checkTimeframeChanged();
 });
 
-// Handles click on the main "Find" button
+// --- UPDATED: Handles click on the main "Find" button ---
 fetchButton.addEventListener('click', () => {
-    fetchButton.classList.remove('btn-pulse-glow');
-    fetchButton.classList.add('hidden');
-
+    // 1. Get the currently selected days
     let days;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
 
@@ -97,59 +128,47 @@ fetchButton.addEventListener('click', () => {
         }
     }
     
+    // 2. Call fetchData.
+    // fetchData will now be responsible for hiding the button
+    // and setting the new 'lastSearchedTimeframe'.
     fetchData(days);
 });
 
 // --- Handle click on "Show Bookmarks" button ---
 showBookmarksBtn.addEventListener('click', () => {
-    // 1. Toggle the view state
     bookmarksViewActive = !bookmarksViewActive;
-    
-    // 2. Style the button
     showBookmarksBtn.classList.toggle('active', bookmarksViewActive);
-    
-    // 3. Re-render the list
     renderResults();
 });
 
-// --- NEW: Handle click on "Owner Filter" group ---
+// --- Handle click on "Owner Filter" group ---
 ownerFilterGroup.addEventListener('click', (e) => {
     const clickedButton = e.target.closest('.bookmark-toggle');
     if (!clickedButton) return;
 
-    // 1. Get the new filter value
     currentOwnerFilter = clickedButton.dataset.filter;
 
-    // 2. Update button styles
-    // THIS IS THE FIX: First, remove 'active' from ALL buttons
     ownerFilterGroup.querySelectorAll('.bookmark-toggle').forEach(btn => {
         btn.classList.remove('active');
     });
-    // Then, add 'active' to ONLY the one you clicked
     clickedButton.classList.add('active');
     
-    // 3. Re-render the list with the filter
     renderResults();
 });
 
 // Handles clicks inside the results list (Buzz, Velocity, Chart, AND BOOKMARKS)
 repoList.addEventListener('click', async (e) => {
 
-    // --- NEW: Handle "Bookmark" clicks (MUST BE FIRST) ---
+    // --- Handle "Bookmark" clicks (MUST BE FIRST) ---
     const bookmarkBtn = e.target.closest('.bookmark-btn');
     if (bookmarkBtn) {
         const repoId = parseInt(bookmarkBtn.dataset.repoId);
-        
-        // Find the index of this repo in the bookmarks array
         const bookmarkIndex = bookmarks.findIndex(repo => repo.id === repoId);
         
         if (bookmarkIndex > -1) {
-            // It's already bookmarked, so remove it
             bookmarks.splice(bookmarkIndex, 1);
             bookmarkBtn.classList.remove('bookmarked');
         } else {
-            // It's not bookmarked, so add it
-            // Find the full repo object from *either* list
             const repoToAdd = currentRepoList.find(repo => repo.id === repoId) || bookmarks.find(repo => repo.id === repoId);
             if (repoToAdd) {
                 bookmarks.push(repoToAdd);
@@ -157,15 +176,11 @@ repoList.addEventListener('click', async (e) => {
             }
         }
         
-        // Update the button count
         showBookmarksBtn.textContent = `Show Bookmarks (${bookmarks.length})`;
         
-        // If we're in bookmark view, re-render the list to show the removal
         if (bookmarksViewActive || currentOwnerFilter !== 'all') {
             renderResults();
         }
-        
-        // Return early so we don't trigger other event listeners
         return; 
     }
 
@@ -396,24 +411,29 @@ window.addEventListener('load', () => {
     } else {
         console.error("Spark-Finder: Typewriter element not found!");
     }
+    
+    // On page load, check the timeframe.
+    // Since lastSearchedTimeframe is null, this will show the button.
+    checkTimeframeChanged();
 });
 
 // --- 4. CORE FUNCTIONS ---
 
+// --- UPDATED: fetchData ---
 async function fetchData(days) {
+    // --- NEW: Set state and hide button immediately ---
+    lastSearchedTimeframe = days;
+    fetchButton.classList.add('hidden');
+    fetchButton.classList.remove('btn-pulse-glow');
+    // ---
+
     showLoading(true);
     showError(null);
     results.classList.add('hidden');
     repoList.innerHTML = '';
     
-    // --- UPDATED: Only reset bookmark view on new fetch ---
     bookmarksViewActive = false;
     showBookmarksBtn.classList.remove('active');
-
-    // --- REMOVED ---
-    // We NO LONGER reset the currentOwnerFilter or the filter buttons.
-    // They will persist through the new fetch.
-    // ---
 
     try {
         const res = await fetch(`/api/search?days=${days}`);
@@ -429,8 +449,6 @@ async function fetchData(days) {
             return;
         }
         
-        // renderResults() will now be called, and it will
-        // automatically apply the *persistent* currentOwnerFilter
         renderResults(); 
 
     } catch (err) {
@@ -446,12 +464,11 @@ function renderResults() {
     // 1. Determine the source list
     const sourceList = bookmarksViewActive ? bookmarks : currentRepoList;
     
-    // 2. NEW: Apply the owner filter
+    // 2. Apply the owner filter
     let filteredList;
     if (currentOwnerFilter === 'all') {
         filteredList = sourceList;
     } else {
-        // The repo.owner.type is either 'User' or 'Organization'
         filteredList = sourceList.filter(repo => repo.owner.type === currentOwnerFilter);
     }
 
@@ -464,54 +481,42 @@ function renderResults() {
         resultsTitle.textContent = `Top Repos${filterText} (Sorted by Avg. Velocity)`;
     }
 
-    // 4. Handle empty states (NEW LOGIC)
+    // 4. Handle empty states
     if (filteredList.length === 0) {
-        // List is empty. Why?
-        repoList.innerHTML = ''; // Always clear the list
+        repoList.innerHTML = ''; 
         
         if (bookmarksViewActive) {
             if (bookmarks.length === 0) {
-                // Case A: Bookmark list is empty
                 showError("You haven't bookmarked any repos yet.");
             } else {
-                // Case B: Bookmark list has items, but filter cleared them
                 showError(`No bookmarks found matching the "${currentOwnerFilter}" filter.`);
             }
         } else {
-            // We are in the main repo list view
             if (currentRepoList.length === 0) {
-                // Case C: No search has been run yet.
-                // `fetchData` handles the error if the search *returns* empty.
-                // So here, we just show nothing.
-                showError(null); // Clear any pre-existing error
+                showError(null); 
             } else {
-                // Case D: A search was run, but the filter cleared the list
                 showError(`No repos found matching the "${currentOwnerFilter}" filter.`);
             }
         }
         
     } else {
-        // List has items, render them
-        showError(null); // Clear any error
-        displayResults(filteredList); // Pass the FINAL filtered list
+        showError(null); 
+        displayResults(filteredList); 
     }
     
     // 5. Manage visibility
     if (filteredList.length > 0) {
         results.classList.remove('hidden');
     } else {
-        // This handles showing the "no bookmarks" or "filter empty" error
-        if (showError.textContent) { // Only hide if there's an error msg
+        if (showError.textContent) { 
              results.classList.add('hidden');
         }
     }
 }
 
 
-// --- UPDATED: This function just renders ANY list it's given ---
 function displayResults(repos) {
-    // --- UPDATED: Removed resultsTitle.textContent from here ---
-    repoList.innerHTML = ''; // Clear the list first
+    repoList.innerHTML = '';
 
     let selectedTimeframe;
     let deepDiveDays;
@@ -546,10 +551,8 @@ function displayResults(repos) {
         li.className = 'p-4 border border-gray-700 rounded-lg';
         const velocity = repo.velocityScore.toFixed(1);
         
-        // --- NEW: Check if this repo is bookmarked ---
         const isBookmarked = bookmarks.some(b => b.id === repo.id);
         
-        // --- NEW: Get owner type for a small badge ---
         const ownerTypeBadge = repo.owner.type === 'Organization' 
             ? `<span class="text-xs font-semibold bg-blue-900 text-blue-300 px-2 py-0.5 rounded ml-2">Org</span>`
             : '';
@@ -567,7 +570,8 @@ function displayResults(repos) {
                     </button>
                     
                     <a href="${repo.html_url}" target="_blank" class="text-xl font-bold text-[#e9de97] hover:text-[#d9ce8a] hover:underline">${repo.full_name}</a>
-                    ${ownerTypeBadge} </div>
+                    ${ownerTypeBadge}
+                </div>
                 <div class="text-right">
                     <div class="text-xl font-bold text-[#7592fd]">${velocity}</div>
                     <div class="text-xs text-gray-400">avg. stars / day</div>
@@ -644,8 +648,6 @@ function displayResults(repos) {
         `;
         repoList.appendChild(li);
     });
-
-    // results.classList.remove('hidden'); // <-- This is handled by renderResults()
 }
 
 // --- 5. HELPER FUNCTIONS ---
