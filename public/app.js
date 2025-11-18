@@ -221,36 +221,65 @@ repoList.addEventListener('click', async (e) => {
                 button.textContent = 'Hide';
                 button.dataset.buzzState = 'shown';
 
-                let contentHtml;
+                let contentHtml = '';
                 if (totalMentions > 0) {
-                     let countsTitle = `
-                        <h4 class="text-sm font-semibold mb-3 text-gray-100 flex justify-between items-center">
-                            <span class="text-gray-100">X/Twitter: <span class="font-bold text-blue-400">${twitterCount}</span></span>
-                            <span class="text-gray-100">Reddit: <span class="font-bold text-orange-400">${redditCount}</span></span>
-                            <span class="text-gray-100">Hacker News: <span class="font-bold text-[#e9de97]">${hnCount}</span></span>
-                        </h4>
-                    `;
-                     let linksHtml = countsTitle + `<ul class="list-disc list-inside space-y-1 text-xs" id="buzz-links-${targetId}">`;
-                     const createLink = (post, platform) => {
+                    
+                    const createLink = (post, platform) => {
                         const color = platform === 'hn' ? 'text-[#e9de97]' : (platform === 'rd' ? 'text-orange-400' : 'text-blue-400');
                         return `<li class="truncate text-gray-400"><span class="font-bold ${color}">(${post.score})</span> <a href="${post.url}" target="_blank" class="${color} hover:underline">${post.title}</a></li>`;
                     };
+
+                    // Sort Data
                     data.hackerNewsPosts.sort((a, b) => b.score - a.score);
                     data.redditPosts.sort((a, b) => b.score - a.score);
                     data.twitterPosts.sort((a, b) => b.score - a.score);
-                    linksHtml += data.twitterPosts.slice(0, 10).map(p => createLink(p, 'tw')).join('');
-                    linksHtml += `<li id="twitter-insertion-point-${targetId}" style="display: none;"></li>`;
-                    linksHtml += data.redditPosts.map(p => createLink(p, 'rd')).join('');
-                    linksHtml += data.hackerNewsPosts.map(p => createLink(p, 'hn')).join('');
-                    linksHtml += '</ul>';
-                    if (data.twitterPosts.length > 10) {
-                        linksHtml += `<button class="show-more-tweets text-xs text-[#c9587c] hover:underline mt-2" data-target-id="${targetId}" data-shown="10">Show More (${10} / ${twitterCount})</button>`;
+
+                    // --- 1. Twitter Section ---
+                    contentHtml += `<div class="mb-4">`;
+                    contentHtml += `<h5 class="text-sm font-bold text-gray-200 mb-2">X/Twitter: <span class="text-blue-400">${twitterCount}</span></h5>`;
+                    if (twitterCount > 0) {
+                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">`;
+                        contentHtml += data.twitterPosts.slice(0, 10).map(p => createLink(p, 'tw')).join('');
+                        // Keep the insertion point for "Show More"
+                        contentHtml += `<li id="twitter-insertion-point-${targetId}" style="display: none;"></li>`;
+                        contentHtml += `</ul>`;
+                        
+                        if (data.twitterPosts.length > 10) {
+                            contentHtml += `<button class="show-more-tweets text-xs text-[#c9587c] hover:underline mt-1 ml-2" data-target-id="${targetId}" data-shown="10">Show More (${10} / ${twitterCount})</button>`;
+                        }
+                    } else {
+                        contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`;
                     }
-                    contentHtml = linksHtml;
+                    contentHtml += `</div>`;
+
+                    // --- 2. Reddit Section ---
+                    contentHtml += `<div class="mb-4">`;
+                    contentHtml += `<h5 class="text-sm font-bold text-gray-200 mb-2">Reddit: <span class="text-orange-400">${redditCount}</span></h5>`;
+                    if (redditCount > 0) {
+                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">`;
+                        contentHtml += data.redditPosts.map(p => createLink(p, 'rd')).join('');
+                        contentHtml += `</ul>`;
+                    } else {
+                        contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`;
+                    }
+                    contentHtml += `</div>`;
+
+                    // --- 3. Hacker News Section ---
+                    contentHtml += `<div class="mb-2">`;
+                    contentHtml += `<h5 class="text-sm font-bold text-gray-200 mb-2">Hacker News: <span class="text-[#e9de97]">${hnCount}</span></h5>`;
+                    if (hnCount > 0) {
+                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">`;
+                        contentHtml += data.hackerNewsPosts.map(p => createLink(p, 'hn')).join('');
+                        contentHtml += `</ul>`;
+                    } else {
+                        contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`;
+                    }
+                    contentHtml += `</div>`;
 
                 } else {
                     contentHtml = `<p class="text-sm text-gray-400 italic">No social mentions found in this timeframe.</p>`;
                 }
+                
                 resultsContainer.innerHTML = contentHtml;
                 resultsContainer.classList.remove('hidden');
 
@@ -411,20 +440,16 @@ function renderResults() {
     if (filteredList.length === 0) {
         repoList.innerHTML = ''; 
         
-        // --- FIX IS HERE ---
-        // Only show error if we have a source list (meaning a search was run)
         if (bookmarksViewActive) {
              if (bookmarks.length === 0) { showError("You haven't bookmarked any repos yet."); }
              else { showError(`No bookmarks found matching these filters.`); }
         } else {
              if (currentRepoList.length === 0) {
-                 // No search run yet. Do NOT show error.
                  showError(null);
-                 results.classList.add('hidden'); // Ensure hidden
+                 results.classList.add('hidden');
              } else {
-                 // Search run, but filters killed results. Show error.
                  showError("No repositories found matching these filters.");
-                 results.classList.remove('hidden'); // Show results container (so we see title/empty space)
+                 results.classList.remove('hidden');
              }
         }
 
