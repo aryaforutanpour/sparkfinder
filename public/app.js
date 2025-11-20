@@ -22,12 +22,15 @@ const showBookmarksBtn = document.getElementById('showBookmarksBtn');
 const bookmarkCountSpan = document.getElementById('bookmark-count'); 
 const ownerFilterGroup = document.getElementById('owner-filter-group'); 
 const topicFilterGroup = document.getElementById('topic-filter-group'); 
+const sortContainer = document.getElementById('sort-container'); 
 
 let bookmarks = [];           
 let currentRepoList = [];   
 let bookmarksViewActive = false; 
 
-// Filters State
+// --- Variables ---
+let searchCache = {};          
+let currentSort = 'velocity';  
 let currentOwnerFilter = 'all'; 
 let currentTopicFilter = 'all'; 
 let currentPage = 1;
@@ -36,7 +39,7 @@ let lastSearchedTimeframe = null;
 
 // --- 2. EVENT LISTENERS ---
 
-// --- HELPER: Check Timeframe ---
+// --- HELPER: Check Timeframe (Only for Custom Input & Load) ---
 function checkTimeframeChanged() {
     let selectedDays;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
@@ -50,6 +53,7 @@ function checkTimeframeChanged() {
 
     if (isNaN(selectedDays) || selectedDays < 1) { selectedDays = 30; }
 
+    // Only show the button if the days have changed from the last search
     if (selectedDays === lastSearchedTimeframe) {
         fetchButton.classList.add('hidden');
         fetchButton.classList.remove('btn-pulse-glow');
@@ -62,8 +66,11 @@ function checkTimeframeChanged() {
 // --- Timeframe Group Clicks ---
 timeframeGroup.addEventListener('click', (e) => {
     const clickedButton = e.target.closest('.timeframe-btn');
+    
+    // 1. If clicked outside a button OR clicked "Custom", ignore (Custom handled separately)
     if (!clickedButton || clickedButton.id === 'custom-btn-trigger') return;
 
+    // 2. Update UI Classes
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active-btn'));
     
     customDaysInput.classList.add('hidden');
@@ -71,10 +78,18 @@ timeframeGroup.addEventListener('click', (e) => {
     customBtnTrigger.classList.remove('active-btn'); 
     
     clickedButton.classList.add('active-btn');
-    checkTimeframeChanged();
+    
+    // --- FIX: Force hide the button immediately for presets ---
+    fetchButton.classList.add('hidden'); 
+    fetchButton.classList.remove('btn-pulse-glow');
+
+    // 3. Auto-Fetch
+    let days = clickedButton.dataset.value === 'all' ? 9999 : parseInt(clickedButton.dataset.value);
+    currentPage = 1;
+    fetchData(days, currentPage, false); 
 });
 
-// --- Custom Button Clicks ---
+// --- Custom Button Clicks (Show Button) ---
 customBtnTrigger.addEventListener('click', () => {
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active-btn'));
     
@@ -83,15 +98,16 @@ customBtnTrigger.addEventListener('click', () => {
     customDaysInput.focus();
     customDaysInput.select();
     
-    checkTimeframeChanged();
+    checkTimeframeChanged(); // Check (and likely show) button for custom input
 });
 
+// --- Custom Input Typing (Show Button if changed) ---
 customDaysInput.addEventListener('input', () => {
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active-btn'));
-    checkTimeframeChanged();
+    checkTimeframeChanged(); 
 });
 
-// --- Main Find Button ---
+// --- Main Find Button (Used for Initial Load & Custom) ---
 fetchButton.addEventListener('click', () => {
     let days;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
@@ -109,18 +125,16 @@ fetchButton.addEventListener('click', () => {
     }
     
     currentPage = 1;
-    fetchData(days, currentPage);
+    fetchData(days, currentPage, true); 
 });
 
 // --- Load More Button ---
 loadMoreBtn.addEventListener('click', () => {
     if (!lastSearchedTimeframe) return;
-    
     loadMoreBtn.textContent = "Loading...";
     loadMoreBtn.disabled = true;
-    
     currentPage++;
-    fetchData(lastSearchedTimeframe, currentPage);
+    fetchData(lastSearchedTimeframe, currentPage, true);
 });
 
 // --- Show Bookmarks Toggle ---
@@ -128,52 +142,62 @@ showBookmarksBtn.addEventListener('click', () => {
     bookmarksViewActive = !bookmarksViewActive;
     showBookmarksBtn.classList.toggle('active', bookmarksViewActive);
     
-    // Hide load more when viewing bookmarks
     if (bookmarksViewActive) {
         loadMoreBtn.classList.add('hidden');
+        if (sortContainer) sortContainer.classList.add('hidden');
     } else {
         if (currentRepoList.length > 0) loadMoreBtn.classList.remove('hidden');
+        if (sortContainer) sortContainer.classList.remove('hidden');
     }
     
     renderResults();
 });
 
-// --- Owner Filter (Blue) ---
+// --- Owner Filter ---
 ownerFilterGroup.addEventListener('click', (e) => {
     const clickedButton = e.target.closest('.bookmark-toggle');
     if (!clickedButton) return;
-
     currentOwnerFilter = clickedButton.dataset.filter;
-
     ownerFilterGroup.querySelectorAll('.bookmark-toggle').forEach(btn => btn.classList.remove('active'));
     clickedButton.classList.add('active');
-    
     renderResults();
 });
 
-// --- Topic Filter (Pink) ---
+// --- Topic Filter ---
 topicFilterGroup.addEventListener('click', (e) => {
     const clickedButton = e.target.closest('.topic-toggle');
     if (!clickedButton) return;
-
     const selectedTopic = clickedButton.dataset.topic;
     currentTopicFilter = selectedTopic;
-
     topicFilterGroup.querySelectorAll('.topic-toggle').forEach(btn => btn.classList.remove('active'));
     clickedButton.classList.add('active');
-    
     renderResults();
 });
 
-// --- List Item Clicks (Bookmarks, Buzz, Chart) ---
+// --- Sort Filter ---
+if (sortContainer) {
+    sortContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.sort-btn');
+        if (!btn) return;
+        currentSort = btn.dataset.sort;
+        sortContainer.querySelectorAll('.sort-btn').forEach(b => {
+            b.classList.remove('text-[#e9de97]', 'font-bold');
+            b.classList.add('text-gray-400', 'font-medium');
+        });
+        btn.classList.remove('text-gray-400', 'font-medium');
+        btn.classList.add('text-[#e9de97]', 'font-bold');
+        renderResults();
+    });
+}
+
+// --- List Item Clicks ---
 repoList.addEventListener('click', async (e) => {
 
-    // Bookmark Click
+    // Bookmark
     const bookmarkBtn = e.target.closest('.bookmark-btn');
     if (bookmarkBtn) {
         const repoId = parseInt(bookmarkBtn.dataset.repoId);
         const bookmarkIndex = bookmarks.findIndex(repo => repo.id === repoId);
-        
         if (bookmarkIndex > -1) {
             bookmarks.splice(bookmarkIndex, 1);
             bookmarkBtn.classList.remove('bookmarked');
@@ -184,16 +208,14 @@ repoList.addEventListener('click', async (e) => {
                 bookmarkBtn.classList.add('bookmarked');
             }
         }
-        
         if (bookmarkCountSpan) bookmarkCountSpan.textContent = bookmarks.length;
-        
         if (bookmarksViewActive || currentOwnerFilter !== 'all' || currentTopicFilter !== 'all') {
             renderResults();
         }
         return; 
     }
 
-    // Buzz Click
+    // Buzz
     if (e.target.classList.contains('calculate-buzz-btn')) {
         const button = e.target;
         const repoName = button.dataset.repo;
@@ -208,81 +230,47 @@ repoList.addEventListener('click', async (e) => {
 
             try {
                 const res = await fetch(`/api/social-buzz?repo=${repoName}&days=${timeframe}`);
-                if (!res.ok) { throw new Error("Failed to fetch buzz"); }
-                
+                if (!res.ok) throw new Error("Failed to fetch buzz");
                 const data = await res.json();
                 buzzDataCache[targetId] = data; 
-                
                 const hnCount = data.hackerNewsPosts.length;
                 const redditCount = data.redditPosts.length;
                 const twitterCount = data.twitterPosts.length;
                 const totalMentions = hnCount + redditCount + twitterCount;
-
                 button.textContent = 'Hide';
                 button.dataset.buzzState = 'shown';
-
                 let contentHtml = '';
                 if (totalMentions > 0) {
-                    
+                    if (data.summary) {
+                        contentHtml += `<div id="ai-summary-${targetId}" class="mb-4 p-3 bg-gray-800/50 border-l-4 border-[#c9587c] rounded-r-md"><div class="flex items-center mb-1"><svg class="w-4 h-4 text-[#c9587c] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg><span class="text-xs font-bold text-[#c9587c] uppercase tracking-wider">Buzz Summary</span></div><p class="text-sm text-gray-300 italic leading-relaxed">"${data.summary}"</p></div>`;
+                    }
                     const createLink = (post, platform) => {
                         const color = platform === 'hn' ? 'text-[#e9de97]' : (platform === 'rd' ? 'text-orange-400' : 'text-blue-400');
                         return `<li class="truncate text-gray-400"><span class="font-bold ${color}">(${post.score})</span> <a href="${post.url}" target="_blank" class="${color} hover:underline">${post.title}</a></li>`;
                     };
-
-                    // Sort Data
                     data.hackerNewsPosts.sort((a, b) => b.score - a.score);
                     data.redditPosts.sort((a, b) => b.score - a.score);
                     data.twitterPosts.sort((a, b) => b.score - a.score);
-
-                    // --- 1. Twitter Section ---
-                    contentHtml += `<div class="mb-4">`;
-                    contentHtml += `<h5 class="text-sm font-bold text-gray-200 mb-2">X/Twitter: <span class="text-blue-400">${twitterCount}</span></h5>`;
+                    contentHtml += `<div class="mb-4"><h5 class="text-sm font-bold text-gray-200 mb-2">X/Twitter: <span class="text-blue-400">${twitterCount}</span></h5>`;
                     if (twitterCount > 0) {
-                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">`;
-                        contentHtml += data.twitterPosts.slice(0, 10).map(p => createLink(p, 'tw')).join('');
-                        // Keep the insertion point for "Show More"
-                        contentHtml += `<li id="twitter-insertion-point-${targetId}" style="display: none;"></li>`;
-                        contentHtml += `</ul>`;
-                        
-                        if (data.twitterPosts.length > 10) {
-                            contentHtml += `<button class="show-more-tweets text-xs text-[#c9587c] hover:underline mt-1 ml-2" data-target-id="${targetId}" data-shown="10">Show More (${10} / ${twitterCount})</button>`;
-                        }
-                    } else {
-                        contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`;
-                    }
-                    contentHtml += `</div>`;
-
-                    // --- 2. Reddit Section ---
-                    contentHtml += `<div class="mb-4">`;
-                    contentHtml += `<h5 class="text-sm font-bold text-gray-200 mb-2">Reddit: <span class="text-orange-400">${redditCount}</span></h5>`;
+                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">` + data.twitterPosts.slice(0, 10).map(p => createLink(p, 'tw')).join('') + `<li id="twitter-insertion-point-${targetId}" style="display: none;"></li></ul>`;
+                        if (data.twitterPosts.length > 10) { contentHtml += `<button class="show-more-tweets text-xs text-[#c9587c] hover:underline mt-1 ml-2" data-target-id="${targetId}" data-shown="10">Show More (${10} / ${twitterCount})</button>`; }
+                    } else { contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`; }
+                    contentHtml += `</div><div class="mb-4"><h5 class="text-sm font-bold text-gray-200 mb-2">Reddit: <span class="text-orange-400">${redditCount}</span></h5>`;
                     if (redditCount > 0) {
-                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">`;
-                        contentHtml += data.redditPosts.map(p => createLink(p, 'rd')).join('');
-                        contentHtml += `</ul>`;
-                    } else {
-                        contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`;
-                    }
-                    contentHtml += `</div>`;
-
-                    // --- 3. Hacker News Section ---
-                    contentHtml += `<div class="mb-2">`;
-                    contentHtml += `<h5 class="text-sm font-bold text-gray-200 mb-2">Hacker News: <span class="text-[#e9de97]">${hnCount}</span></h5>`;
+                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">` + data.redditPosts.map(p => createLink(p, 'rd')).join('') + `</ul>`;
+                    } else { contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`; }
+                    contentHtml += `</div><div class="mb-2"><h5 class="text-sm font-bold text-gray-200 mb-2">Hacker News: <span class="text-[#e9de97]">${hnCount}</span></h5>`;
                     if (hnCount > 0) {
-                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">`;
-                        contentHtml += data.hackerNewsPosts.map(p => createLink(p, 'hn')).join('');
-                        contentHtml += `</ul>`;
-                    } else {
-                        contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`;
-                    }
+                        contentHtml += `<ul class="list-disc list-inside space-y-1 text-xs">` + data.hackerNewsPosts.map(p => createLink(p, 'hn')).join('') + `</ul>`;
+                    } else { contentHtml += `<p class="text-xs text-gray-500 italic ml-2">No mentions found.</p>`; }
                     contentHtml += `</div>`;
-
                 } else {
                     contentHtml = `<p class="text-sm text-gray-400 italic">No social mentions found in this timeframe.</p>`;
                 }
-                
                 resultsContainer.innerHTML = contentHtml;
                 resultsContainer.classList.remove('hidden');
-
+                
             } catch (err) {
                 console.error('Social buzz fetch error:', err);
                 resultsContainer.innerHTML = `<span class="text-sm text-red-400">Error loading buzz.</span>`;
@@ -292,7 +280,6 @@ repoList.addEventListener('click', async (e) => {
             } finally {
                 button.disabled = false;
             }
-
         } else if (button.dataset.buzzState === 'shown') {
             button.textContent = 'Buzz';
             button.dataset.buzzState = 'hidden';
@@ -302,7 +289,6 @@ repoList.addEventListener('click', async (e) => {
         }
     }
     
-    // Show More Tweets
     if (e.target.classList.contains('show-more-tweets')) {
          const button = e.target;
          const targetId = button.dataset.targetId;
@@ -322,13 +308,11 @@ repoList.addEventListener('click', async (e) => {
          if (newShown >= totalCount) { button.remove(); } else { button.dataset.shown = newShown; button.textContent = `Show More (${newShown} / ${totalCount})`; }
     }
 
-    // Trajectory
     if (e.target.classList.contains('show-chart-btn')) {
         const button = e.target;
         toggleChart(button, button.dataset.repo, button.dataset.targetId, button.dataset.timeframe, parseInt(button.dataset.totalStars), parseInt(button.dataset.daysOld));
     }
     
-    // Profile
     if (e.target.classList.contains('show-profile-btn')) {
         toggleProfileModal(e.target, e.target.dataset.repo, e.target.dataset.targetId);
     }
@@ -357,8 +341,18 @@ window.addEventListener('load', () => {
 
 // --- 4. CORE FUNCTIONS ---
 
-async function fetchData(days, page = 1) {
+async function fetchData(days, page = 1, forceRefresh = false) {
     lastSearchedTimeframe = days;
+    const cacheKey = `${days}-${page}`;
+
+    if (!forceRefresh && searchCache[cacheKey]) {
+        console.log(`[Frontend] Cache hit for ${cacheKey}`);
+        const cachedRepos = searchCache[cacheKey];
+        if (page === 1) { currentRepoList = cachedRepos; } 
+        else { currentRepoList = [...currentRepoList, ...cachedRepos]; }
+        handleDataSuccess(cachedRepos, page);
+        return; 
+    }
     
     if (page === 1) {
         fetchButton.classList.add('hidden');
@@ -381,6 +375,7 @@ async function fetchData(days, page = 1) {
         }
         
         const newRepos = await res.json(); 
+        searchCache[cacheKey] = newRepos;
         
         if (page === 1) {
             currentRepoList = newRepos;
@@ -388,20 +383,7 @@ async function fetchData(days, page = 1) {
             currentRepoList = [...currentRepoList, ...newRepos];
         }
         
-        if (currentRepoList.length === 0) {
-            showError("No repositories found matching these criteria.");
-            return;
-        }
-        
-        if (newRepos.length > 0) {
-             loadMoreBtn.classList.remove('hidden');
-             loadMoreBtn.textContent = "Load Next Page";
-             loadMoreBtn.disabled = false;
-        } else {
-             loadMoreBtn.classList.add('hidden');
-        }
-        
-        renderResults(); 
+        handleDataSuccess(newRepos, page);
 
     } catch (err) {
         console.error('Fetch Error:', err);
@@ -415,21 +397,46 @@ async function fetchData(days, page = 1) {
     }
 }
 
+function handleDataSuccess(newRepos, page) {
+    if (currentRepoList.length === 0) {
+        showError("No repositories found matching these criteria.");
+        return;
+    }
+    if (newRepos.length > 0) {
+         loadMoreBtn.classList.remove('hidden');
+         loadMoreBtn.textContent = "Load Next Page";
+         loadMoreBtn.disabled = false;
+    } else {
+         loadMoreBtn.classList.add('hidden');
+    }
+    renderResults(); 
+}
+
+function applySort(list) {
+    const sorted = [...list]; 
+    if (currentSort === 'velocity') return sorted.sort((a, b) => b.velocityScore - a.velocityScore);
+    if (currentSort === 'forks') return sorted.sort((a, b) => b.forks_count - a.forks_count);
+    if (currentSort === 'stars') return sorted.sort((a, b) => b.stargazers_count - a.stargazers_count);
+    return sorted;
+}
+
 function renderResults() {
     const sourceList = bookmarksViewActive ? bookmarks : currentRepoList;
-    
     let filteredList = sourceList.filter(repo => {
         const matchesOwner = (currentOwnerFilter === 'all') || (repo.owner.type === currentOwnerFilter);
         const matchesTopic = (currentTopicFilter === 'all') || (repo.category === currentTopicFilter);
         return matchesOwner && matchesTopic;
     });
 
+    filteredList = applySort(filteredList);
+
     if (bookmarksViewActive) {
-        resultsTitle.textContent = `Bookmarked Repos (${filteredList.length} / ${bookmarks.length})`;
+        resultsTitle.textContent = `Bookmarked Repos (${filteredList.length})`;
         loadMoreBtn.classList.add('hidden');
+        if (sortContainer) sortContainer.classList.add('hidden');
     } else {
-        resultsTitle.textContent = `Top Repos (Sorted by Avg. Velocity)`;
-        
+        resultsTitle.textContent = `Top Repos`;
+        if (sortContainer) sortContainer.classList.remove('hidden');
         if (currentRepoList.length > 0 && currentOwnerFilter === 'all' && currentTopicFilter === 'all') {
              loadMoreBtn.classList.remove('hidden');
         } else {
@@ -439,7 +446,6 @@ function renderResults() {
 
     if (filteredList.length === 0) {
         repoList.innerHTML = ''; 
-        
         if (bookmarksViewActive) {
              if (bookmarks.length === 0) { showError("You haven't bookmarked any repos yet."); }
              else { showError(`No bookmarks found matching these filters.`); }
@@ -452,7 +458,6 @@ function renderResults() {
                  results.classList.remove('hidden');
              }
         }
-
     } else {
         showError(null); 
         displayResults(filteredList); 
@@ -460,20 +465,13 @@ function renderResults() {
     }
 }
 
-
 function displayResults(repos) {
     repoList.innerHTML = '';
-
     let selectedTimeframe;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
     const isCustom = !customDaysInput.classList.contains('hidden');
-
-    if (isCustom) {
-        selectedTimeframe = parseInt(customDaysInput.value) || 1;
-    } else {
-        const activeValue = activeBtn ? activeBtn.dataset.value : '30';
-        selectedTimeframe = (activeValue === 'all') ? 9999 : parseInt(activeValue);
-    }
+    if (isCustom) { selectedTimeframe = parseInt(customDaysInput.value) || 1; } 
+    else { const activeValue = activeBtn ? activeBtn.dataset.value : '30'; selectedTimeframe = (activeValue === 'all') ? 9999 : parseInt(activeValue); }
     
     repos.forEach(repo => {
         const li = document.createElement('li');
@@ -481,7 +479,6 @@ function displayResults(repos) {
         const velocity = repo.velocityScore.toFixed(1);
         const isBookmarked = bookmarks.some(b => b.id === repo.id);
         const ownerTypeBadge = repo.owner.type === 'Organization' ? `<span class="text-xs font-semibold bg-blue-900 text-blue-300 px-2 py-0.5 rounded ml-2">Org</span>` : '';
-        
         let topicBadge = '';
         if (repo.category === 'ai') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">AI</span>`;
         if (repo.category === 'web') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">Web</span>`;

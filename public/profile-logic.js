@@ -1,25 +1,21 @@
-//
-// === NEW FILE: public/profile-logic.js ===
-//
 
-// This function is called by app.js
 export async function toggleProfileModal(button, repoName, targetId) {
     const existingModal = document.getElementById(`profile-modal-${targetId}`);
     
     if (existingModal) {
-        existingModal.remove(); // If it exists, remove it (toggle off)
+        existingModal.remove(); 
         button.textContent = 'Show Profile';
     } else {
-        // If it doesn't exist, create it (toggle on)
+        
         button.textContent = 'Loading...';
         button.disabled = true;
         
         // 1. Create the modal structure
         const modal = createModalShell(targetId);
         const modalBody = modal.querySelector('.profile-modal-body');
-        document.body.appendChild(modal); // Add to the end of <body>
+        document.body.appendChild(modal); 
 
-        // 2. Fetch the data
+        
         try {
             const data = await fetchProfileData(repoName);
             renderProfileData(modalBody, data);
@@ -55,14 +51,13 @@ function renderProfileData(modalBody, data) {
         </h3>
     `;
 
-    // --- NEW LOGIC: Prioritize README content ---
+    
     if (data.readmeContent) {
-        // Use the 'marked' library (loaded from index.html) to parse Markdown
+        
         contentHtml += `<div class="profile-readme-content">${marked.parse(data.readmeContent)}</div>`;
     } else {
         // --- FALLBACK LOGIC: If no README, show bio/company/location ---
         
-        // Show Bio only if it exists
         if (data.bio) {
             contentHtml += `<p class="text-gray-300 mb-4">${data.bio}</p>`;
         }

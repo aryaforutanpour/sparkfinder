@@ -1,13 +1,9 @@
-// --- public/chart-logic.js ---
-// This file contains all logic for creating and managing the star trajectory charts.
+
 
 const chartInstances = {};
 const chartLoaders = {};
 
-/**
- * Main exported function.
- * This is called by app.js when a "Show Trajectory" button is clicked.
- */
+
 async function toggleChart(button, repoName, targetId, timeframe, totalStars, daysOld) {
     const chartContainer = document.getElementById(`chart-container-${targetId}`);
     if (!chartContainer) return;
@@ -68,18 +64,14 @@ async function fetchStarHistory(repoName, timeframe, daysOld) {
     return data; // Returns { labels: [...], data: [...] }
 }
 
-/**
- * "DUMB" DRAW CHART FUNCTION
- * This function is now very simple. It just receives the processed
- * labels and data from the server and draws the chart.
- */
+
 function drawChart(chartData, targetId) {
     const ctx = document.getElementById(`chart-${targetId}`).getContext('2d');
     
     // 1. Get the pre-processed data from the server
     const { labels, data } = chartData;
     
-    // 2. Destroy old chart and draw new one
+    
     if (chartInstances[targetId]) {
         chartInstances[targetId].destroy();
     }
@@ -87,12 +79,12 @@ function drawChart(chartData, targetId) {
     const newChart = new Chart(ctx, {
         type: 'line', 
         data: {
-            labels: labels, // <-- Use server-provided labels
+            labels: labels, 
             datasets: [{
                 label: 'New Stars Per Day',
-                data: data, // <-- Use server-provided data
-                backgroundColor: 'rgba(117, 146, 253, 0.2)', // Area color
-                borderColor: '#7592fd',     // Line color
+                data: data,
+                backgroundColor: 'rgba(117, 146, 253, 0.2)', 
+                borderColor: '#7592fd',     
                 borderWidth: 2,
                 fill: true,     
                 tension: 0.4    
@@ -124,5 +116,4 @@ function drawChart(chartData, targetId) {
     chartInstances[targetId] = newChart;
 }
 
-// This "exports" the toggleChart function so app.js can import it
 export { toggleChart };

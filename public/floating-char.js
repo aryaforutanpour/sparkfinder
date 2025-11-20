@@ -1,36 +1,31 @@
-//
-// === public/floating-char.js ===
-//
 
-// --- Settings ---
-const CHAR_COUNT = 11;
+const CHAR_COUNT = 12;
 const BASE_SPEED = 0.25; 
 const CHAR_SIZE = 64; 
 const HIDDEN_SPEED_MULTIPLIER = 10; 
 
-// --- State ---
+
 let characters = [];
 let cardElement = null;
 let containerElement = null;
 
 // --- NEW: Canvas State ---
 let canvas = null;
-let ctx = null; // This is the "drawing context"
+let ctx = null; 
 
-// This is the main animation loop
 function animate() {
     if (!containerElement || !cardElement || !ctx) return; 
 
     const cardRect = cardElement.getBoundingClientRect();
 
-    // --- Clear the canvas ---
+    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Character Loop
+    
     for (let i = 0; i < characters.length; i++) {
         const charA = characters[i];
         
-        // --- Find closest neighbor and draw line ---
+        
         let minDistance = Infinity;
         let closestNeighbor = null;
         
@@ -176,7 +171,7 @@ function init() {
     });
 
 
-    const gridCols = 4;
+    const gridCols = 5;
     const gridRows = 3;
     const cellWidth = window.innerWidth / gridCols;
     const cellHeight = window.innerHeight / gridRows;
@@ -252,5 +247,5 @@ function init() {
     animate();
 }
 
-// Wait for the page to load before starting
+
 window.addEventListener('load', init);

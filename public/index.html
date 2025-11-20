@@ -64,32 +64,38 @@
                           </div>
                         </div>
 
-                        <div class="flex flex-row items-center justify-between gap-2 w-full">
-                            
-                            <div class="flex flex-1 items-center gap-2 overflow-x-auto no-scrollbar p-1 -ml-1">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-200 mb-2">
+                                Filters
+                            </label>
+
+                            <div class="flex flex-row items-center justify-between gap-2 w-full">
                                 
-                                <div id="owner-filter-group" class="flex flex-[3] gap-2 shrink-0">
-                                    <button data-filter="all" class="bookmark-toggle active flex-1 !h-11 !px-2 !py-0 flex items-center justify-center text-sm !w-auto">All</button>
-                                    <button data-filter="User" class="bookmark-toggle flex-1 !h-11 !px-2 !py-0 flex items-center justify-center text-sm !w-auto">Users</button>
-                                    <button data-filter="Organization" class="bookmark-toggle flex-1 !h-11 !px-2 !py-0 flex items-center justify-center text-sm !w-auto">Orgs</button>
+                                <div class="flex flex-1 items-center gap-2 overflow-x-auto no-scrollbar p-1 -ml-1">
+                                    
+                                    <div id="owner-filter-group" class="flex flex-[3] gap-2 shrink-0">
+                                        <button data-filter="all" class="bookmark-toggle active flex-1 !h-11 !px-2 !py-0 pb-1 flex items-center justify-center text-sm !w-auto">All</button>
+                                        <button data-filter="User" class="bookmark-toggle flex-1 !h-11 !px-2 !py-0 pb-1 flex items-center justify-center text-sm !w-auto">Users</button>
+                                        <button data-filter="Organization" class="bookmark-toggle flex-1 !h-11 !px-2 !py-0 pb-1 flex items-center justify-center text-sm !w-auto">Orgs</button>
+                                    </div>
+
+                                    <div id="topic-filter-group" class="flex flex-[4] gap-2 shrink-0">
+                                        <button data-topic="all" class="topic-toggle active flex-1 !h-11 !px-2 !py-0 pb-1 flex items-center justify-center text-sm !w-auto">All</button>
+                                        <button data-topic="ai" class="topic-toggle flex-1 !h-11 !px-2 !py-0 pb-1 flex items-center justify-center text-sm !w-auto">AI/ML</button>
+                                        <button data-topic="web" class="topic-toggle flex-1 !h-11 !px-2 !py-0 pb-1 flex items-center justify-center text-sm !w-auto">Web</button>
+                                        <button data-topic="tools" class="topic-toggle flex-1 !h-11 !px-2 !py-0 pb-1 flex items-center justify-center text-sm !w-auto">Tools</button>
+                                    </div>
+
                                 </div>
 
-                                <div id="topic-filter-group" class="flex flex-[4] gap-2 shrink-0">
-                                    <button data-topic="all" class="topic-toggle active flex-1 !h-11 !px-2 !py-0 flex items-center justify-center text-sm !w-auto">All</button>
-                                    <button data-topic="ai" class="topic-toggle flex-1 !h-11 !px-2 !py-0 flex items-center justify-center text-sm !w-auto">AI/ML</button>
-                                    <button data-topic="web" class="topic-toggle flex-1 !h-11 !px-2 !py-0 flex items-center justify-center text-sm !w-auto">Web</button>
-                                    <button data-topic="tools" class="topic-toggle flex-1 !h-11 !px-2 !py-0 flex items-center justify-center text-sm !w-auto">Tools</button>
-                                </div>
+                                <button id="showBookmarksBtn" class="bookmark-toggle !h-11 !w-auto !px-4 !py-0 pb-1 flex items-center justify-center gap-2 shrink-0" title="Show Bookmarks">
+                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 11.186 0Z" />
+                                    </svg>
+                                    <span id="bookmark-count" class="font-bold text-lg">0</span>
+                                </button>
 
                             </div>
-
-                            <button id="showBookmarksBtn" class="bookmark-toggle !h-11 !w-auto !px-4 !py-0 flex items-center justify-center gap-2 shrink-0" title="Show Bookmarks">
-                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 11.186 0Z" />
-                                </svg>
-                                <span id="bookmark-count" class="font-bold text-lg">0</span>
-                            </button>
-
                         </div>
                         <button id="fetchButton" class="w-full px-6 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors btn-pulse-glow">
                             Find Trending Projects
@@ -106,13 +112,29 @@
             
                     <div id="error" class="text-center text-red-400 font-medium hidden p-4 bg-red-900/50 rounded-lg my-6"></div>
             
-                    <div id="results" class="hidden mt-8 border-t border-gray-700 pt-6">
-                        <h2 id="results-title" class="text-2xl font-semibold text-gray-100 mb-4">
-                            Trending Report
-                        </h2>
+                    <div id="results" class="hidden mt-8 border-t border-gray-700 pt-4">
+                        
+                        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-4 border-b border-gray-700">
+                            <h2 id="results-title" class="text-2xl font-semibold text-gray-100">
+                                Trending Report
+                            </h2>
+
+                            <div id="sort-container" class="flex items-center space-x-4 mt-2 md:mt-0 text-sm">
+                                <span class="text-gray-500 font-medium">Sort by:</span>
+                                
+                                <button data-sort="velocity" class="sort-btn text-[#e9de97] font-bold hover:text-white transition-colors">
+                                    Velocity
+                                </button>
+                                <button data-sort="forks" class="sort-btn text-gray-400 font-medium hover:text-white transition-colors">
+                                    Forks
+                                </button>
+                                <button data-sort="stars" class="sort-btn text-gray-400 font-medium hover:text-white transition-colors">
+                                    Stars
+                                </button>
+                            </div>
+                        </div>
                         
                         <div class="max-h-[60vh] overflow-y-auto pr-2">
-                            
                             <ul id="repo-list" class="space-y-4">
                                 </ul>
 
@@ -121,8 +143,8 @@
                                     Load Next Page
                                 </button>
                             </div>
-
-                        </div> </div>
+                        </div> 
+                    </div>
 
                 </div> </div> </div> </div>
 

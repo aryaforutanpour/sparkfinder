@@ -1,22 +1,16 @@
-/*
-  style.css
-  This file includes your custom font, animations, and theme settings.
-*/
 
 html {
-    background-color: #000000; /* Sets the overscroll color to black */
+    background-color: #000000; 
 }
 
-/* 1. Defines your custom font */
 @font-face {
   font-family: 'Laude Title';
   src: url('/assets/LaudeTitle.ttf') format('truetype');
 }
 
-/* 2. Applies your custom font */
+
 body {
     font-family: 'Laude Title', 'Inter', sans-serif;
-    /* Background image is no longer here */
 }
 
 /* --- Blinking Cursor Animation --- */
@@ -40,7 +34,6 @@ body {
     }
 }
 
-/* --- Custom Color Theme --- */
 
 :root {
     --laude-text: #7592fd;
@@ -64,7 +57,6 @@ body {
     background-color: #5f7ce8;
 }
 
-/* === ANIMATIONS: Fade In + Pulse Glow === */
 @keyframes fade-in-up {
   0% {
     opacity: 0;
@@ -90,7 +82,6 @@ body {
   animation: fade-in-up 0.8s ease-out, pulse-glow 3s infinite ease-in-out;
 }
 
-/* --- Hide spinners on number inputs --- */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
@@ -100,11 +91,6 @@ input[type="number"] {
     -moz-appearance: textfield;
 }
 
-/* ===============================================
-  UPDATED STYLES FOR BACKGROUND LAYERING
-===============================================
-*/
-
 /* LAYER 0: The Fullscreen Background */
 .site-background {
   position: fixed;
@@ -112,7 +98,7 @@ input[type="number"] {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 0; /* Sits behind everything */
+  z-index: 0;
   
   background-image: url('/assets/darklaude.png');
   background-size: cover;
@@ -122,11 +108,9 @@ input[type="number"] {
   overflow: hidden; 
 }
 
-/* --- Background Wave Animation (REMOVED) --- */
+/* --- Background Wave Animation --- */
 
-/* LAYER 1: The new line canvas 
-  (Sits on top of the background)
-*/
+
 #line-canvas {
     position: fixed;
     top: 0;
@@ -136,21 +120,17 @@ input[type="number"] {
     z-index: 1; 
 }
 
-
-/* LAYER 2: The Floating Characters
-  (CHANGED: z-index is now 2)
-*/
 #character-container {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 2; /* Sits on top of the lines */
+    z-index: 2; 
     overflow: hidden;
 }
 
-/* --- NEW: Styles for the character wrapper --- */
+
 .floating-char-wrapper {
     position: absolute;
     width: 64px;
@@ -159,14 +139,12 @@ input[type="number"] {
     user-select: none;
 }
 
-/* --- NEW: Styles for just the image --- */
 .char-image {
     width: 100%;
     height: 100%;
-    opacity: 0.7; /* Make characters transparent */
+    opacity: 0.7; 
 }
 
-/* --- NEW: The white border box --- */
 .char-border-box {
     position: absolute;
     top: 0;
@@ -174,7 +152,7 @@ input[type="number"] {
     right: 0;
     bottom: 0;
     border: 2px solid rgba(255, 255, 255, 0.5);
-    /* opacity: 0.5; -- Removed, border has opacity */
+    
 }
 
 /* --- NEW: The X/Y coordinates label --- */
@@ -196,11 +174,10 @@ input[type="number"] {
 }
 
 /* LAYER 3: The Main Card 
-  (CHANGED: z-index is now 3)
 */
 #main-card {
     position: relative;
-    z-index: 3; /* Sits on top of the characters */
+    z-index: 3; 
 }
 
 /* --- NEW CARD SANDWICH STYLES --- */
@@ -214,10 +191,10 @@ input[type="number"] {
 }
 .card-tint {
     background-color: rgba(48, 6, 15, 0.3); 
-    /* position: relative; z-index: 2; -- REMOVED */
+   
 }
 .card-content {
-    padding: 2rem; /* This was your p-8 */
+    padding: 2rem; 
 }
 
 /* --- Profile Modal Styles --- */
@@ -324,7 +301,6 @@ input[type="number"] {
   animation: spin-360 0.6s linear;
 }
 
-/* --- Character 360 Spin Animation --- */
 @keyframes spin-360 {
   from {
     transform: rotate(0deg);
@@ -334,7 +310,6 @@ input[type="number"] {
   }
 }
 
-/* This targets the image *inside* the wrapper */
 .char-image.spinning {
   animation: spin-360 0.6s linear;
 }
@@ -342,65 +317,62 @@ input[type="number"] {
 /* --- NEW: Bookmark Button Styles --- 
 */
 
-/* This is the main "Show Bookmarks" toggle button */
 .bookmark-toggle {
     width: 100%;
-    padding: 0.5rem 1rem; /* A bit smaller than the main button */
-    border: 2px solid var(--laude-text); /* Use your blue color */
+    padding: 0.5rem 1rem; 
+    border: 2px solid var(--laude-text); 
     color: var(--laude-text);
     font-family: 'Laude Title', 'Inter', sans-serif;
     font-size: 1rem;
     font-weight: 500;
-    border-radius: 0.5rem; /* rounded-lg */
+    border-radius: 0.5rem;
     transition: all 0.2s ease-in-out;
 }
 
 /* --- Blue Button Hover Effect --- */
 .bookmark-toggle:hover {
-    /* This is your blue color (#7592fd) at 10% opacity */
+   
     background-color: rgba(117, 146, 253, 0.1);
 }
-/* This is the "active" state for the toggle */
+
 .bookmark-toggle.active {
     background-color: var(--laude-text);
     color: white;
 }
 
-/* This is the icon button on each repo card */
 .bookmark-btn {
-    padding: 0.25rem; /* p-1 */
-    border-radius: 0.25rem; /* rounded */
+    padding: 0.25rem;
+    border-radius: 0.25rem; 
     transition: all 0.2s ease-in-out;
 }
 
 .bookmark-btn:hover {
-    background-color: #374151; /* bg-gray-700 */
+    background-color: #374151; 
 }
 
-/* These styles control the empty/filled icon state */
+
 .bookmark-btn .icon-filled {
-    display: none; /* Hide filled icon by default */
+    display: none; 
 }
 .bookmark-btn .icon-empty {
-    display: block; /* Show empty icon by default */
+    display: block;
 }
 
 .bookmark-btn.bookmarked .icon-filled {
-    display: block; /* Show filled icon when bookmarked */
-    color: var(--laude-accent); /* Make it your gold color! */
+    display: block; 
+    color: var(--laude-accent);
 }
 .bookmark-btn.bookmarked .icon-empty {
-    display: none; /* Hide empty icon when bookmarked */
+    display: none; 
 }
 
-/* --- Pink Topic Filter Buttons (Mirrors .bookmark-toggle) --- */
+
 .topic-toggle {
-    /* Dimensions are now handled by HTML classes (!h-11, etc.) */
-    border: 2px solid #c9587c; /* Buzz Pink Border */
-    color: #c9587c;            /* Buzz Pink Text */
+    border: 2px solid #c9587c; 
+    color: #c9587c;            
     font-family: 'Laude Title', 'Inter', sans-serif;
     
-    /* Removed font-size so it respects 'text-sm' in HTML */
+    
     font-weight: 500;
     border-radius: 0.5rem;
     transition: all 0.2s ease-in-out;
@@ -409,10 +381,9 @@ input[type="number"] {
 }
 
 .topic-toggle:hover {
-    background-color: rgba(201, 88, 124, 0.1); /* Subtle pink tint on hover */
+    background-color: rgba(201, 88, 124, 0.1); 
 }
 
-/* The Active (Filled) State */
 .topic-toggle.active {
     background-color: #c9587c;
     color: white;
