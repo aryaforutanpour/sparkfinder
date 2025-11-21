@@ -37,6 +37,7 @@ app.get('/api/search', async (req, res) => {
 
     function detectCategory(repo) {
         const text = ((repo.name || '') + ' ' + (repo.description || '') + ' ' + (repo.topics || []).join(' ')).toLowerCase();
+        if (text.match(/agent|autonomous|agentic|swarm|multi-agent|robotics|copilot|assistant/)) { return 'agents';}
         if (text.match(/ai|gpt|llm|machine learning|neural|diffusion|transformer|rag|openai|llama|anthropic|deep learning|computer vision|nlp/)) return 'ai';
         if (text.match(/react|nextjs|vue|svelte|tailwind|css|html|web|frontend|backend|api|http|server|browser|wasm/)) return 'web';
         if (text.match(/cli|tool|library|sdk|compiler|parser|utility|automation|devops|docker|kubernetes|terminal/)) return 'tools';
