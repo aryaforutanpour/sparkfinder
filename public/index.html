@@ -30,7 +30,7 @@
                     <h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6">
                         <span id="typewriter-text"></span><span class="blinking-cursor"></span>
                     </h1>
-                    <p class="text-center text-gray-300 mb-6">Find projects that show a promising "spark" in traction by searching for new repos that have gained stars quickly.</p>
+                    <p class="text-center text-gray-300 mb-6">Discover repos that show a promising "spark" in traction.</p>
                     
                     <div class="space-y-2">
                         
@@ -67,28 +67,28 @@
                         </div>
 
                         <div>
-                          <div id="timeframe-group" class="grid grid-cols-5 gap-1 rounded-lg p-1 bg-gray-800 border-gray-700">
-                            <button data-value="7" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                          <div id="timeframe-group" class="grid grid-cols-5 gap-2">
+                            <button data-value="7" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
                                 7 Days
                             </button>
-                            <button data-value="30" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 active-btn">
+                            <button data-value="30" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm active-btn">
                                 30 Days
                             </button>
-                            <button data-value="90" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                            <button data-value="90" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
                                 90 Days
                             </button>
-                            <button data-value="all" class="timeframe-btn rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                            <button data-value="all" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
                                 All Time
                             </button>
                             <div class="relative">
-                                <button id="custom-btn-trigger" class="timeframe-btn w-full rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700">
+                                <button id="custom-btn-trigger" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
                                     Custom
                                 </button>
                                 
                                 <input type="number" 
                                        id="custom-days-input" 
                                        value="120" 
-                                       class="absolute inset-0 w-full h-full rounded-md bg-gray-800 text-gray-200 text-center text-sm font-medium border-3 border-blue-500 focus:ring-2 focus:ring-blue-500 hidden">
+                                       class="absolute inset-0 w-full h-full rounded-md bg-gray-900 text-[#e9de97] text-center text-sm font-medium border-2 border-[#e9de97] focus:ring-0 focus:outline-none hidden">
                             </div>
                           </div>
                         </div>

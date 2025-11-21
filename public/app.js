@@ -481,6 +481,7 @@ function displayResults(repos) {
         const ownerTypeBadge = repo.owner.type === 'Organization' ? `<span class="text-xs font-semibold bg-blue-900 text-blue-300 px-2 py-0.5 rounded ml-2">Org</span>` : '';
         let topicBadge = '';
         if (repo.category === 'ai') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">AI</span>`;
+        if (repo.category === 'agents') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">Agent</span>`;
         if (repo.category === 'web') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">Web</span>`;
         if (repo.category === 'tools') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">Tool</span>`;
 

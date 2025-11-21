@@ -388,3 +388,26 @@ input[type="number"] {
     background-color: #c9587c;
     color: white;
 }
+
+/* NEW: Gold Outline Theme for Timeframe */
+.timeframe-toggle {
+    border: 2px solid var(--laude-accent); /* #e9de97 */
+    color: var(--laude-accent);
+    font-family: 'Laude Title', 'Inter', sans-serif;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease-in-out;
+    background-color: transparent;
+    width: 100%;
+}
+
+.timeframe-toggle:hover {
+    background-color: rgba(233, 222, 151, 0.1); /* Low opacity gold */
+}
+
+/* Active State: Filled Gold with Dark Text */
+.timeframe-toggle.active-btn {
+    background-color: var(--laude-accent);
+    color: var(--dark-text); 
+    font-weight: 600;
+}
