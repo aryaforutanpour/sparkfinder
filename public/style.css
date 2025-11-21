@@ -198,29 +198,44 @@ input[type="number"] {
 }
 
 /* --- Profile Modal Styles --- */
+
+/* 1. The Backdrop: Centers the modal */
 .profile-modal-backdrop {
   position: fixed;
-  z-index: 50; 
+  z-index: 100;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.8); /* Darkens the rest of the site */
+  
   display: flex;
   align-items: center;
   justify-content: center;
+  
   animation: modal-fade-in 0.2s ease-out;
 }
+
+/* 2. The Content Box: Pure darklaude.png background */
 .profile-modal-content {
   position: relative;
-  background-color: #1f2937;
-  border: 1px solid #374151;
+
+  /* --- FIXED: Just the image, no color overlay --- */
+  background-image: url('/assets/darklaude.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* ---------------------------------------------- */
+
+  border: 1px solid #444; /* Slightly lighter border to define the edges */
   border-radius: 0.5rem;
   padding: 2rem;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
 }
+
+/* Close Button */
 .profile-modal-close {
   position: absolute;
   top: 0.5rem;
@@ -231,10 +246,13 @@ input[type="number"] {
   background: none;
   border: none;
   cursor: pointer;
+  transition: color 0.2s;
 }
+
 .profile-modal-close:hover {
-  color: #f3f4f6;
+  color: #ffffff;
 }
+
 @keyframes modal-fade-in {
   from {
     opacity: 0;

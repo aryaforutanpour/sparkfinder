@@ -319,7 +319,7 @@ repoList.addEventListener('click', async (e) => {
 });
 
 // --- 3. TYPEWRITER EFFECT ---
-const textToType = "// SPARK FINDER"; 
+const textToType = "// SPARK-FINDER"; 
 let typeWriterElement; 
 let charIndex = 0;
 function typeWriter() {
