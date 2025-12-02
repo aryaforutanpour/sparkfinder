@@ -1,6 +1,7 @@
 // --- Imports ---
 import { toggleChart } from './chart-logic.js';
 import { toggleProfileModal } from './profile-logic.js';
+import { initSentry } from './sentry.js';
 
 /* === app.js === */
 
@@ -336,6 +337,10 @@ window.addEventListener('load', () => {
     typeWriterElement = document.getElementById('typewriter-text');
     if (typeWriterElement) { typeWriterElement.textContent = ""; setTimeout(typeWriter, 300); }
     checkTimeframeChanged();
+    
+    // --- NEW: Initialize the Sentry System ---
+    initSentry(); 
+    // -----------------------------------------
 });
 
 

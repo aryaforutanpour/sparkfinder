@@ -28,6 +28,10 @@
       "dest": "/public/app.js"
     },
     {
+      "src": "/sentry.js",
+      "dest": "/public/sentry.js"
+    },
+    {
       "src": "/chart-logic.js",
       "dest": "/public/chart-logic.js"
     },
@@ -42,6 +46,12 @@
     {
       "src": "/",
       "dest": "/public/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/sentry-scan",
+      "schedule": "0 0 * * *"
     }
   ]
 }

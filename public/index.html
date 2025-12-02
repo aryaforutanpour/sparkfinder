@@ -25,9 +25,16 @@
         
         <div class="card-background-texture">
             <div class="card-tint">
-                <div class="card-content">
+                <div class="card-content relative">
 
-                    <h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6">
+                    <div class="absolute top-6 right-6 z-10">
+                        <button id="blinkingRedTrigger" class="blinking-red-btn">
+                            <span class="sentry-dot"></span>
+                            <span id="sentry-text">Enable Sentry</span>
+                        </button>
+                    </div>
+
+                    <h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6 mt-2">
                         <span id="typewriter-text"></span><span class="blinking-cursor"></span>
                     </h1>
                     <p class="text-center text-gray-300 mb-6">Discover repos that show a promising "spark" in traction.</p>

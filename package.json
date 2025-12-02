@@ -4,7 +4,7 @@
   "description": "Finds trending GitHub repos",
   "main": "server.js",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "open http://localhost:3000 & node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -16,11 +16,13 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.86.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "node-fetch": "^2.7.0",
     "open": "^10.2.0",
-    "openai": "^6.9.1"
+    "openai": "^6.9.1",
+    "resend": "^6.5.2"
   },
   "devDependencies": {
     "live-server": "^1.2.2"

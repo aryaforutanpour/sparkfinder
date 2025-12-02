@@ -172,7 +172,7 @@ function init() {
 
 
     const gridCols = 5;
-    const gridRows = 3;
+    const gridRows = 4;
     const cellWidth = window.innerWidth / gridCols;
     const cellHeight = window.innerHeight / gridRows;
     let cellIndex = 0; 
