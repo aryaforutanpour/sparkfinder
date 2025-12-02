@@ -47,11 +47,5 @@
       "src": "/",
       "dest": "/public/index.html"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/sentry-scan",
-      "schedule": "0 0 * * *"
-    }
   ]
 }
