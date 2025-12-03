@@ -103,21 +103,31 @@ const fetchTwitter = async (repoName, daysAgo) => {
     }
 }; 
 
-// --- Helper 5: AI Summarizer (Google Gemini) ---
+// --- Helper 5: AI Summarizer (Updated for Insight) ---
 async function generateSummary(repoName, hn, reddit, twitter) {
     const allTexts = [
-        ...hn.slice(0, 5).map(p => `HN: ${p.title}`),
-        ...reddit.slice(0, 5).map(p => `Reddit: ${p.title}`),
-        ...twitter.slice(0, 5).map(p => `Tweet: ${p.title}`)
+        ...hn.slice(0, 8).map(p => `HN: ${p.title}`),
+        ...reddit.slice(0, 8).map(p => `Reddit: ${p.title}`),
+        ...twitter.slice(0, 8).map(p => `Tweet: ${p.title}`)
     ];
 
     if (allTexts.length === 0) return null;
 
-    // --- THE UPDATED PROMPT ---
+    // --- THE NEW "SPIKE HUNTER" PROMPT ---
     const prompt = `
-    Read these social media post titles about the project "${repoName}".
-    Summarize the key value proposition or main controversy in one extremely concise sentence (under 20 words).
-    Do not use filler phrases like "The sentiment is" or "Users are discussing". Start directly with the insight.
+    Analyze these social media discussions about the project "${repoName}".
+    
+    Your Goal: Identify the specific reason for the recent spike in attention.
+    
+    Do NOT just describe what the project does.
+    Do NOT use filler words like "Users are discussing" or "The sentiment is".
+    
+    Instead, answer:
+    1. Did they release a new feature? (e.g., "Released v2 with vision support")
+    2. Is there a controversy? (e.g., "Users debating the license change")
+    3. Is it a comparison? (e.g., "Seen as a faster alternative to Pandas")
+    
+    Output ONE concise sentence (max 25 words) that explains the *reason* for the buzz.
     
     Posts:
     ${allTexts.join('\n')}
@@ -128,7 +138,6 @@ async function generateSummary(repoName, hn, reddit, twitter) {
         const response = await result.response;
         const text = response.text();
         
-        // Clean up any accidental quotes the AI might add
         return text.replace(/^"|"$/g, '').trim();
 
     } catch (err) {
