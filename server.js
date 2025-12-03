@@ -279,14 +279,27 @@ app.post('/api/unsubscribe', async (req, res) => {
 
 // --- Endpoint 8: The Automatic Scanner (CRON Job) ---
 app.get('/api/sentry-scan', async (req, res) => {
-    console.log("[Sentry] Starting scan...");
+    console.log("[Sentry] Starting rigorous scan...");
+    
     if (!supabase || !resend) {
         console.error("[Sentry] Abort: Missing DB or Email service.");
         return res.status(500).json({ message: "Services not ready." });
     }
 
+    // --- HELPER: Academic Detection ---
+    function isResearcher(user) {
+        const text = ((user.bio || '') + ' ' + (user.company || '') + ' ' + (user.email || '')).toLowerCase();
+        const academicKeywords = [
+            'lab', 'research', 'institute', 'university', 'college', 'school', 'academy',
+            'phd', 'candidate', 'student', 'professor', 'fellow', 'scientist',
+            'berkeley', 'mit', 'stanford', 'cmu', 'harvard', 'oxford', 'cambridge',
+            '.edu', 'alumni'
+        ];
+        return academicKeywords.some(keyword => text.includes(keyword));
+    }
+
     try {
-        // 1. Fetch Fresh High-Velocity Repos (Last 3 days)
+        // 1. SEARCH PHASE
         const daysAgo = 3;
         const date = new Date();
         date.setDate(date.getDate() - daysAgo);
@@ -300,101 +313,136 @@ app.get('/api/sentry-scan', async (req, res) => {
         const data = await githubRes.json();
         const repos = data.items || [];
 
-        // 2. Filter: "Traction Threshold" (>150 stars in 3 days)
-        // TIP: Change 150 to 1 if you want to test receiving an email right now
-        const highValueRepos = repos.filter(repo => repo.stargazers_count > 150);
+        // 2. FILTER PHASE: The Gauntlet
+        const winners = []; // CHANGED: Now an array to hold multiple sparks
 
-        if (highValueRepos.length === 0) {
-            console.log("[Sentry] No new high-velocity repos.");
-            return res.json({ message: "No sparks found." });
+        for (const repo of repos) {
+            console.log(`[Sentry] Inspecting candidate: ${repo.full_name}...`);
+
+            // CHECK A: Velocity (> 70 stars/day)
+            const createdDate = new Date(repo.created_at);
+            const today = new Date();
+            const daysOld = Math.max(1, Math.ceil(Math.abs(today - createdDate) / (1000 * 60 * 60 * 24)));
+            const velocity = repo.stargazers_count / daysOld;
+
+            if (velocity < 70) { console.log(`   -> Failed Velocity`); continue; }
+
+            // CHECK B: User Type
+            if (repo.owner.type !== 'User') { console.log(`   -> Failed Type`); continue; }
+
+            // CHECK C: Dedup (History)
+            const { data: sentLogs } = await supabase.from('sent_logs').select('repo_name').eq('repo_name', repo.full_name);
+            if (sentLogs && sentLogs.length > 0) { console.log(`   -> Failed: Already sent`); continue; }
+
+            // CHECK D: Researcher
+            const userRes = await fetch(repo.owner.url, { headers: { 'Authorization': `token ${pat}` } });
+            const userProfile = await userRes.json();
+            if (!isResearcher(userProfile)) { console.log(`   -> Failed Identity`); continue; }
+
+            // CHECK E: Commits
+            const commitsRes = await fetch(`https://api.github.com/repos/${repo.full_name}/commits?per_page=6`, { headers: { 'Authorization': `token ${pat}` } });
+            const commits = await commitsRes.json();
+            if (!Array.isArray(commits) || commits.length < 5) { console.log(`   -> Failed Activity`); continue; }
+
+            // CHECK F: Buzz
+            const buzz = await fetchAllBuzz(repo.full_name, 30);
+            const totalBuzz = buzz.hackerNewsPosts.length + buzz.redditPosts.length + buzz.twitterPosts.length;
+            if (totalBuzz === 0) { console.log(`   -> Failed Buzz`); continue; }
+
+            // IF WE MADE IT HERE: ADD TO WINNERS
+            console.log(`[Sentry] WINNER FOUND: ${repo.full_name}`);
+            winners.push(repo); 
+            // REMOVED: break; (Now it keeps looking!)
         }
 
-        // 3. Dedup: Check History Log
-        const { data: sentLogs } = await supabase.from('sent_logs').select('repo_name');
-        const sentNames = new Set((sentLogs || []).map(l => l.repo_name));
-        const newSparks = highValueRepos.filter(repo => !sentNames.has(repo.full_name));
-
-        if (newSparks.length === 0) {
-            console.log("[Sentry] Sparks found, but already emailed.");
-            return res.json({ message: "All sparks already sent." });
+        if (winners.length === 0) {
+            console.log("[Sentry] No candidates passed the gauntlet.");
+            return res.json({ message: "No sparks passed validation." });
         }
 
-        // 4. Select Winner (Top 1 only)
-        const winner = newSparks[0];
-        console.log(`[Sentry] ALERT TRIGGERED: ${winner.full_name}`);
-
-        // 5. Fetch Subscribers
+        // 3. ALERT PHASE: Send Emails for EACH Winner
         const { data: subscribers } = await supabase.from('subscribers').select('email');
         if (!subscribers || subscribers.length === 0) return res.json({ message: "No subscribers." });
 
-        // 6. Send Emails (Professional "Spark Detected" Template)
-        for (const sub of subscribers) {
-            await resend.emails.send({
-                from: 'Spark-Finder Sentry <system@sentry.livelaughlau.de>', // Keep default for Free Tier
-                to: sub.email,
-                subject: `Spark Detected: ${winner.full_name} is trending`, 
-                html: `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <style>
-                    body { background-color: #0f1117; margin: 0; padding: 0; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-                    .container { max-width: 600px; margin: 40px auto; background: #1f2937; border: 1px solid #374151; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-                    .header { background: #111827; padding: 30px 20px; text-align: center; border-bottom: 1px solid #374151; }
-                    .logo { color: #7592fd; font-weight: 800; font-size: 20px; letter-spacing: -0.5px; text-transform: uppercase; margin: 0; }
-                    .badge { display: inline-block; background: rgba(233, 222, 151, 0.15); color: #e9de97; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 4px; margin-top: 10px; border: 1px solid rgba(233, 222, 151, 0.3); }
-                    .content { padding: 30px 40px; }
-                    .repo-name { color: #ffffff; font-size: 24px; font-weight: 700; margin: 0 0 10px; }
-                    .description { color: #9ca3af; font-size: 15px; line-height: 1.6; margin-bottom: 25px; }
-                    .stats-grid { display: table; width: 100%; margin-bottom: 30px; background: #111827; border-radius: 8px; border: 1px solid #374151; }
-                    .stat-cell { display: table-cell; width: 50%; padding: 15px; border-right: 1px solid #374151; text-align: center; }
-                    .stat-cell:last-child { border-right: none; }
-                    .stat-label { color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px; }
-                    .stat-value { color: #e9de97; font-size: 20px; font-weight: 700; }
-                    .btn-container { text-align: center; margin-top: 10px; }
-                    .btn { background: #7592fd; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px; transition: background 0.2s; }
-                    .footer { text-align: center; padding: 30px 20px; color: #6b7280; font-size: 12px; line-height: 1.5; }
-                    .footer a { color: #6b7280; text-decoration: underline; }
-                  </style>
-                </head>
-                <body>
-                  <div class="container">
-                    <div class="header">
-                      <p class="logo">⚡ Spark-Finder</p>
-                      <div class="badge">TRACTION THRESHOLD MET</div>
-                    </div>
-                    <div class="content">
-                      <h2 class="repo-name">${winner.full_name}</h2>
-                      <p class="description">${winner.description || 'No description provided.'}</p>
-                      <div class="stats-grid">
-                        <div class="stat-cell">
-                          <div class="stat-label">Total Stars</div>
-                          <div class="stat-value">${winner.stargazers_count.toLocaleString()}</div>
+        let emailsSent = 0;
+
+        // Loop through every winner found
+        for (const winner of winners) {
+            
+            // Loop through every subscriber
+            for (const sub of subscribers) {
+                await resend.emails.send({
+                    from: 'Spark-Finder Sentry <system@sentry.livelaughlau.de>',
+                    to: sub.email,
+                    subject: `Spark Detected: ${winner.full_name} (Researcher)`, 
+                    html: `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <style>
+                        body { background-color: #0f1117; margin: 0; padding: 0; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+                        .container { max-width: 600px; margin: 40px auto; background: #1f2937; border: 1px solid #374151; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+                        .header { background: #111827; padding: 30px 20px; text-align: center; border-bottom: 1px solid #374151; }
+                        .logo { color: #7592fd; font-weight: 800; font-size: 20px; letter-spacing: -0.5px; text-transform: uppercase; margin: 0; }
+                        .badge { display: inline-block; background: rgba(233, 222, 151, 0.15); color: #e9de97; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 4px; margin-top: 10px; border: 1px solid rgba(233, 222, 151, 0.3); }
+                        .content { padding: 30px 40px; }
+                        .repo-name { color: #ffffff; font-size: 24px; font-weight: 700; margin: 0 0 10px; }
+                        .description { color: #9ca3af; font-size: 15px; line-height: 1.6; margin-bottom: 25px; }
+                        .stats-grid { display: table; width: 100%; margin-bottom: 30px; background: #111827; border-radius: 8px; border: 1px solid #374151; }
+                        .stat-cell { display: table-cell; width: 33%; padding: 15px; border-right: 1px solid #374151; text-align: center; }
+                        .stat-cell:last-child { border-right: none; }
+                        .stat-label { color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px; }
+                        .stat-value { color: #e9de97; font-size: 18px; font-weight: 700; }
+                        .btn-container { text-align: center; margin-top: 10px; }
+                        .btn { background: #7592fd; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px; transition: background 0.2s; }
+                        .footer { text-align: center; padding: 30px 20px; color: #6b7280; font-size: 12px; line-height: 1.5; }
+                        .footer a { color: #6b7280; text-decoration: underline; }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="container">
+                        <div class="header">
+                          <p class="logo">⚡ Spark-Finder</p>
+                          <div class="badge">ACADEMIC SPARK DETECTED</div>
                         </div>
-                        <div class="stat-cell">
-                          <div class="stat-label">Traction</div>
-                          <div class="stat-value">High</div>
+                        <div class="content">
+                          <h2 class="repo-name">${winner.full_name}</h2>
+                          <p class="description">${winner.description || 'No description provided.'}</p>
+                          <div class="stats-grid">
+                            <div class="stat-cell">
+                              <div class="stat-label">Stars</div>
+                              <div class="stat-value">${winner.stargazers_count}</div>
+                            </div>
+                            <div class="stat-cell">
+                              <div class="stat-label">Daily Vel</div>
+                              <div class="stat-value">${(winner.stargazers_count / 3).toFixed(0)}+</div>
+                            </div>
+                            <div class="stat-cell">
+                              <div class="stat-label">Type</div>
+                              <div class="stat-value">Researcher</div>
+                            </div>
+                          </div>
+                          <div class="btn-container">
+                            <a href="${winner.html_url}" class="btn">View Research</a>
+                          </div>
+                        </div>
+                        <div class="footer">
+                          Sentry Alert • Traction Threshold Met<br/>
+                          <a href="#">Unsubscribe</a>
                         </div>
                       </div>
-                      <div class="btn-container">
-                        <a href="${winner.html_url}" class="btn">View Repository</a>
-                      </div>
-                    </div>
-                    <div class="footer">
-                      You received this because you subscribed to Spark-Finder alerts.<br/>
-                      <a href="#">Unsubscribe</a>
-                    </div>
-                  </div>
-                </body>
-                </html>
-                `
-            });
+                    </body>
+                    </html>
+                    `
+                });
+            }
+            
+            // Log to History so we don't send again
+            await supabase.from('sent_logs').insert([{ repo_name: winner.full_name }]);
+            emailsSent++;
         }
 
-        // 7. Log to History
-        await supabase.from('sent_logs').insert([{ repo_name: winner.full_name }]);
-
-        res.json({ message: `Sent alert for ${winner.full_name} to ${subscribers.length} users.` });
+        res.json({ message: `Sent ${emailsSent} alerts to ${subscribers.length} users.` });
 
     } catch (err) {
         console.error(err);
