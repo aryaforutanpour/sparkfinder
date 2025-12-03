@@ -8,6 +8,29 @@ const { fetchAllBuzz, generateSummaryFromText } = require('./api_logic/buzz-logi
 
 const app = express();
 
+// --- CONFIG: The Laude List (Manual VIPs) ---
+const LAUDE_VIPS = [
+    // --- LEGENDS ---
+    'karpathy',         // Andrej Karpathy
+    'geohot',           // George Hotz
+    'ggerganov',        // Georgi Gerganov (llama.cpp)
+    'antirez',          // Salvatore Sanfilippo (Redis)
+    'shreyashankar',    // ML Ops Researcher
+    'jxnl',             // Jason Liu
+    'hwchase17',        // Harrison Chase (LangChain)
+    'carlini',          // Nicholas Carlini (Google DeepMind/Brain)
+
+    // --- TERMINAL BENCH / LAUDE ECOSYSTEM ---
+    'laude-institute',  // Creators of TerminalBench 2.0
+    'TheMikeMerrill',   // Co-Creator of TerminalBench
+    'alexgshaw',        // Co-Creator of TerminalBench (Laude)
+    'Jaluus',           // Jan-Lucas Uslu (Stanford, TBench Lead)
+    'harshraj172',      // Harsh Raj (Harbor/TBench Contributor)
+    'ibercovich',       // Ivan Bercovich (Active TBench Contributor)
+    'YanhaoLi-Cc',      // Top contributor to TerminalBench
+    'kobe0938'          // Top contributor to TerminalBench
+];
+
 // --- Middleware ---
 app.use(express.json()); 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -103,6 +126,84 @@ app.get('/api/search', async (req, res) => {
 
     } catch (err) {
         console.error('[Spark-Finder] Search Error:', err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// --- Endpoint 1.5: The Laude List (Efficient Parallel Fetch + Freshness Filter) ---
+app.get('/api/laude-list', async (req, res) => {
+    const pat = process.env.GITHUB_PAT;
+    if (!pat) return res.status(500).json({ message: 'GitHub PAT missing.' });
+
+    // 1. Define Time Limits
+    const activeLimit = new Date();
+    activeLimit.setDate(activeLimit.getDate() - 30); // Must be active recently
+
+    const freshnessLimit = new Date();
+    freshnessLimit.setDate(freshnessLimit.getDate() - 90); // Must be LESS than 90 days old
+
+    console.log(`[Laude List] Fetching activity for ${LAUDE_VIPS.length} VIPs...`);
+
+    try {
+        // 2. PARALLEL FETCH
+        const requests = LAUDE_VIPS.map(user => 
+            fetch(`https://api.github.com/users/${user}/repos?sort=pushed&direction=desc&per_page=10`, {
+                headers: { 
+                    'Accept': 'application/vnd.github.v3+json', 
+                    'Authorization': `token ${pat}` 
+                }
+            })
+            .then(res => res.ok ? res.json() : [])
+            .catch(err => [])
+        );
+
+        const resultsArrays = await Promise.all(requests);
+        let allRepos = resultsArrays.flat();
+
+        // 3. THE DOUBLE FILTER (Active + Fresh)
+        const activeFreshRepos = allRepos.filter(repo => {
+            const pushedDate = new Date(repo.pushed_at);
+            const createdDate = new Date(repo.created_at);
+            
+            // Rule 1: Must be active in the last 30 days
+            const isActive = pushedDate >= activeLimit;
+            
+            // Rule 2: Must be created in the last 90 days (No legacy projects)
+            const isFresh = createdDate >= freshnessLimit;
+
+            return isActive && isFresh;
+        });
+
+        // 4. SORT (Stars)
+        activeFreshRepos.sort((a, b) => b.stargazers_count - a.stargazers_count);
+
+        // 5. Format for Frontend
+        const today = new Date();
+        const formattedResults = activeFreshRepos.map(repo => {
+            const createdDate = new Date(repo.created_at);
+            const diffDays = Math.max(1, Math.ceil(Math.abs(today - createdDate) / (1000 * 60 * 60 * 24)));
+            
+            let category = 'other';
+            const text = ((repo.name || '') + ' ' + (repo.description || '')).toLowerCase();
+            if (text.match(/agent|autonomous/)) category = 'agents';
+            else if (text.match(/ai|gpt|llm|transformer/)) category = 'ai';
+            else if (text.match(/web|react/)) category = 'web';
+            else if (text.match(/tool|cli/)) category = 'tools';
+
+            return { 
+                ...repo, 
+                daysOld: diffDays, 
+                velocityScore: repo.stargazers_count / diffDays, 
+                category,
+                isLaude: true 
+            };
+        });
+
+        console.log(`[Laude List] Processed ${allRepos.length} repos -> Found ${formattedResults.length} fresh & active.`);
+        res.json(formattedResults);
+
+    } catch (err) {
+        console.error('[Laude List] Error:', err);
         res.status(500).json({ message: err.message });
     }
 });
@@ -306,7 +407,7 @@ app.get('/api/sentry-scan', async (req, res) => {
         const dateStr = date.toISOString().split('T')[0];
         
         const pat = process.env.GITHUB_PAT;
-        const query = `created:>=${dateStr}`;
+        const query = `pushed:>=${dateStr}`;
         const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=20`;
         
         const githubRes = await fetch(url, { headers: { 'Authorization': `token ${pat}` } });

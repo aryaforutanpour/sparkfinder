@@ -25,11 +25,15 @@ const ownerFilterGroup = document.getElementById('owner-filter-group');
 const topicFilterGroup = document.getElementById('topic-filter-group'); 
 const sortContainer = document.getElementById('sort-container'); 
 
+// --- NEW: Laude List Constants ---
+const laudeListBtn = document.getElementById('laudeListBtn');
+const standardFiltersContainer = document.getElementById('standard-filters-container');
+let isLaudeMode = false;
+
+// --- Variables ---
 let bookmarks = [];           
 let currentRepoList = [];   
 let bookmarksViewActive = false; 
-
-// --- Variables ---
 let searchCache = {};          
 let currentSort = 'velocity';  
 let currentOwnerFilter = 'all'; 
@@ -39,6 +43,62 @@ let lastSearchedTimeframe = null;
 
 
 // --- 2. EVENT LISTENERS ---
+
+// --- NEW: LAUDE LIST TOGGLE (God Mode) ---
+if (laudeListBtn) {
+    laudeListBtn.addEventListener('click', async () => {
+        isLaudeMode = !isLaudeMode; // Toggle State
+
+        if (isLaudeMode) {
+            // --- TURN ON LAUDE MODE ---
+            laudeListBtn.classList.add('active');
+            standardFiltersContainer.classList.add('filters-disabled');
+            
+            // Hide standard controls
+            if (sortContainer) sortContainer.classList.add('hidden');
+            loadMoreBtn.classList.add('hidden');
+            
+            // Update Title
+            resultsTitle.innerHTML = `<span class="text-[#e9de97]">✦ Laude List</span> (Active Researchers)`;
+            repoList.innerHTML = '';
+            showLoading(true);
+            results.classList.remove('hidden'); // Ensure results container is visible
+
+            try {
+                const res = await fetch('/api/laude-list');
+                if (!res.ok) throw new Error("Failed to fetch Laude List");
+                
+                const vipRepos = await res.json();
+                currentRepoList = vipRepos; 
+                
+                showLoading(false);
+                
+                if (vipRepos.length === 0) {
+                    showError("No new activity from Laude VIPs in the last 14 days.");
+                } else {
+                    showError(null);
+                    displayResults(vipRepos);
+                }
+            } catch (err) {
+                console.error(err);
+                showError("System Error: Could not retrieve VIP data.");
+                showLoading(false);
+            }
+
+        } else {
+            // --- TURN OFF LAUDE MODE (Restore Standard) ---
+            laudeListBtn.classList.remove('active');
+            standardFiltersContainer.classList.remove('filters-disabled');
+            
+            // Re-enable UI elements
+            if (sortContainer) sortContainer.classList.remove('hidden');
+            // Check logic for loadMoreBtn handled in renderResults
+            
+            // Trigger a fresh search to reset the view to standard data
+            fetchButton.click(); 
+        }
+    });
+}
 
 // --- HELPER: Check Timeframe (Only for Custom Input & Load) ---
 function checkTimeframeChanged() {
@@ -66,50 +126,46 @@ function checkTimeframeChanged() {
 
 // --- Timeframe Group Clicks ---
 timeframeGroup.addEventListener('click', (e) => {
+    if (isLaudeMode) return; // Ignore clicks if disabled
+
     const clickedButton = e.target.closest('.timeframe-btn');
-    
-    // 1. If clicked outside a button OR clicked "Custom", ignore (Custom handled separately)
     if (!clickedButton || clickedButton.id === 'custom-btn-trigger') return;
 
-    // 2. Update UI Classes
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active-btn'));
     
     customDaysInput.classList.add('hidden');
     customBtnTrigger.classList.remove('hidden');
     customBtnTrigger.classList.remove('active-btn'); 
-    
     clickedButton.classList.add('active-btn');
     
-    // --- FIX: Force hide the button immediately for presets ---
     fetchButton.classList.add('hidden'); 
     fetchButton.classList.remove('btn-pulse-glow');
 
-    // 3. Auto-Fetch
     let days = clickedButton.dataset.value === 'all' ? 9999 : parseInt(clickedButton.dataset.value);
     currentPage = 1;
     fetchData(days, currentPage, false); 
 });
 
-// --- Custom Button Clicks (Show Button) ---
+// --- Custom Button Clicks ---
 customBtnTrigger.addEventListener('click', () => {
+    if (isLaudeMode) return;
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active-btn'));
-    
     customBtnTrigger.classList.add('hidden');
     customDaysInput.classList.remove('hidden');
     customDaysInput.focus();
     customDaysInput.select();
-    
-    checkTimeframeChanged(); // Check (and likely show) button for custom input
+    checkTimeframeChanged();
 });
 
-// --- Custom Input Typing (Show Button if changed) ---
 customDaysInput.addEventListener('input', () => {
     timeframeGroup.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active-btn'));
     checkTimeframeChanged(); 
 });
 
-// --- Main Find Button (Used for Initial Load & Custom) ---
+// --- Main Find Button ---
 fetchButton.addEventListener('click', () => {
+    if (isLaudeMode) return;
+    
     let days;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
 
@@ -147,8 +203,8 @@ showBookmarksBtn.addEventListener('click', () => {
         loadMoreBtn.classList.add('hidden');
         if (sortContainer) sortContainer.classList.add('hidden');
     } else {
-        if (currentRepoList.length > 0) loadMoreBtn.classList.remove('hidden');
-        if (sortContainer) sortContainer.classList.remove('hidden');
+        if (currentRepoList.length > 0 && !isLaudeMode) loadMoreBtn.classList.remove('hidden');
+        if (sortContainer && !isLaudeMode) sortContainer.classList.remove('hidden');
     }
     
     renderResults();
@@ -156,20 +212,28 @@ showBookmarksBtn.addEventListener('click', () => {
 
 // --- Owner Filter ---
 ownerFilterGroup.addEventListener('click', (e) => {
+    if (isLaudeMode) return; // Disabled in Laude Mode
+
     const clickedButton = e.target.closest('.bookmark-toggle');
     if (!clickedButton) return;
-    currentOwnerFilter = clickedButton.dataset.filter;
+
     ownerFilterGroup.querySelectorAll('.bookmark-toggle').forEach(btn => btn.classList.remove('active'));
     clickedButton.classList.add('active');
+    
+    currentOwnerFilter = clickedButton.dataset.filter;
     renderResults();
 });
 
 // --- Topic Filter ---
 topicFilterGroup.addEventListener('click', (e) => {
+    if (isLaudeMode) return;
+
     const clickedButton = e.target.closest('.topic-toggle');
     if (!clickedButton) return;
+    
     const selectedTopic = clickedButton.dataset.topic;
     currentTopicFilter = selectedTopic;
+    
     topicFilterGroup.querySelectorAll('.topic-toggle').forEach(btn => btn.classList.remove('active'));
     clickedButton.classList.add('active');
     renderResults();
@@ -178,6 +242,8 @@ topicFilterGroup.addEventListener('click', (e) => {
 // --- Sort Filter ---
 if (sortContainer) {
     sortContainer.addEventListener('click', (e) => {
+        if (isLaudeMode) return;
+
         const btn = e.target.closest('.sort-btn');
         if (!btn) return;
         currentSort = btn.dataset.sort;
@@ -193,7 +259,6 @@ if (sortContainer) {
 
 // --- List Item Clicks ---
 repoList.addEventListener('click', async (e) => {
-
     // Bookmark
     const bookmarkBtn = e.target.closest('.bookmark-btn');
     if (bookmarkBtn) {
@@ -210,7 +275,7 @@ repoList.addEventListener('click', async (e) => {
             }
         }
         if (bookmarkCountSpan) bookmarkCountSpan.textContent = bookmarks.length;
-        if (bookmarksViewActive || currentOwnerFilter !== 'all' || currentTopicFilter !== 'all') {
+        if (bookmarksViewActive || (!isLaudeMode && (currentOwnerFilter !== 'all' || currentTopicFilter !== 'all'))) {
             renderResults();
         }
         return; 
@@ -338,9 +403,8 @@ window.addEventListener('load', () => {
     if (typeWriterElement) { typeWriterElement.textContent = ""; setTimeout(typeWriter, 300); }
     checkTimeframeChanged();
     
-    // --- NEW: Initialize the Sentry System ---
+    // --- Initialize the Sentry System ---
     initSentry(); 
-    // -----------------------------------------
 });
 
 
@@ -418,6 +482,7 @@ function handleDataSuccess(newRepos, page) {
 }
 
 function applySort(list) {
+    // In Laude Mode, backend sorts by Recent or Stars, so frontend sort might be redundant but okay
     const sorted = [...list]; 
     if (currentSort === 'velocity') return sorted.sort((a, b) => b.velocityScore - a.velocityScore);
     if (currentSort === 'forks') return sorted.sort((a, b) => b.forks_count - a.forks_count);
@@ -428,21 +493,25 @@ function applySort(list) {
 function renderResults() {
     const sourceList = bookmarksViewActive ? bookmarks : currentRepoList;
     let filteredList = sourceList.filter(repo => {
+        // If in Laude Mode, ignore standard filters unless it's bookmarks view
+        if (isLaudeMode && !bookmarksViewActive) return true;
+
         const matchesOwner = (currentOwnerFilter === 'all') || (repo.owner.type === currentOwnerFilter);
         const matchesTopic = (currentTopicFilter === 'all') || (repo.category === currentTopicFilter);
         return matchesOwner && matchesTopic;
     });
 
-    filteredList = applySort(filteredList);
+    if (!isLaudeMode) filteredList = applySort(filteredList);
 
     if (bookmarksViewActive) {
         resultsTitle.textContent = `Bookmarked Repos (${filteredList.length})`;
         loadMoreBtn.classList.add('hidden');
         if (sortContainer) sortContainer.classList.add('hidden');
     } else {
-        resultsTitle.textContent = `Top Repos`;
-        if (sortContainer) sortContainer.classList.remove('hidden');
-        if (currentRepoList.length > 0 && currentOwnerFilter === 'all' && currentTopicFilter === 'all') {
+        if (!isLaudeMode) resultsTitle.textContent = `Top Repos`;
+        
+        if (sortContainer && !isLaudeMode) sortContainer.classList.remove('hidden');
+        if (currentRepoList.length > 0 && !isLaudeMode) {
              loadMoreBtn.classList.remove('hidden');
         } else {
             loadMoreBtn.classList.add('hidden');
@@ -475,8 +544,12 @@ function displayResults(repos) {
     let selectedTimeframe;
     const activeBtn = document.querySelector('#timeframe-group .active-btn');
     const isCustom = !customDaysInput.classList.contains('hidden');
+    
     if (isCustom) { selectedTimeframe = parseInt(customDaysInput.value) || 1; } 
-    else { const activeValue = activeBtn ? activeBtn.dataset.value : '30'; selectedTimeframe = (activeValue === 'all') ? 9999 : parseInt(activeValue); }
+    else { 
+        const activeValue = activeBtn ? activeBtn.dataset.value : '30'; 
+        selectedTimeframe = (activeValue === 'all') ? 9999 : parseInt(activeValue); 
+    }
     
     repos.forEach(repo => {
         const li = document.createElement('li');
@@ -489,6 +562,11 @@ function displayResults(repos) {
         if (repo.category === 'agents') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">Agent</span>`;
         if (repo.category === 'web') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">Web</span>`;
         if (repo.category === 'tools') topicBadge = `<span class="text-xs font-semibold bg-[#c9587c] text-white px-2 py-0.5 rounded ml-2">Tool</span>`;
+
+        // Highlight Laude Items
+        if (repo.isLaude) {
+            li.classList.add('border-[#e9de97]', 'border-opacity-50');
+        }
 
         li.innerHTML = `
             <div class="flex justify-between items-start">

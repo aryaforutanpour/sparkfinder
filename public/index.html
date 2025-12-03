@@ -21,151 +21,158 @@
     <canvas id="line-canvas"></canvas>
     <div id="character-container"></div>
 
-    <div id="main-card" class="w-full max-w-3xl rounded-lg shadow-lg m-4 border border-gray-700">
-        
-        <div class="card-background-texture">
-            <div class="card-tint">
-                <div class="card-content relative">
+    <div class="relative w-full max-w-3xl m-4">
 
-                    <div class="absolute top-6 right-6 z-10">
-                        <button id="blinkingRedTrigger" class="blinking-red-btn">
-                            <span class="sentry-dot"></span>
-                            <span id="sentry-text">Enable Sentry</span>
-                        </button>
-                    </div>
+        <div class="absolute -top-9 left-0 z-20 flex flex-row items-center">
+            
+            <button id="blinkingRedTrigger" class="blinking-red-btn backdrop-blur-sm relative z-20">
+                <span class="sentry-dot"></span>
+                <span id="sentry-text">Enable Sentry</span>
+            </button>
+            
+            <div class="w-8 h-px bg-gradient-to-r from-[#ff4444] to-[#e9de97] opacity-60"></div>
+            
+            <button id="laudeListBtn" class="laude-gold-btn backdrop-blur-sm relative z-20">
+                ✦ Laude List
+            </button>
+        </div>
 
-                    <h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6 mt-2">
-                        <span id="typewriter-text"></span><span class="blinking-cursor"></span>
-                    </h1>
-                    <p class="text-center text-gray-300 mb-6">Discover repos that show a promising "spark" in traction.</p>
-                    
-                    <div class="space-y-2">
+        <div id="main-card" class="w-full rounded-lg shadow-lg border border-gray-700">
+            
+            <div class="card-background-texture">
+                <div class="card-tint">
+                    <div class="card-content">
+
+                        <h1 class="text-3xl font-bold text-center text-[#7592fd] mb-6 mt-2">
+                            <span id="typewriter-text"></span><span class="blinking-cursor"></span>
+                        </h1>
+                        <p class="text-center text-gray-300 mb-6">Discover repos that show a promising "spark" in traction.</p>
                         
-                        <div class="flex flex-col md:flex-row gap-4 w-full">
+                        <div id="standard-filters-container" class="space-y-2 transition-opacity duration-300">
                             
-                            <div class="flex-1">
-                                <label class="block text-sm font-normal text-white mb-2 ml-1">
-                                    Owner
-                                </label>
-                                <div class="flex overflow-x-auto no-scrollbar p-1 -ml-1">
-                                    <div id="owner-filter-group" class="flex gap-2 w-full">
-                                        <button data-filter="all" class="bookmark-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">All</button>
-                                        <button data-filter="User" class="bookmark-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Users</button>
-                                        <button data-filter="Organization" class="bookmark-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Orgs</button>
+                            <div class="flex flex-col md:flex-row gap-4 w-full">
+                                
+                                <div class="flex-1">
+                                    <label class="block text-sm font-normal text-white mb-2 ml-1">
+                                        Owner
+                                    </label>
+                                    <div class="flex overflow-x-auto no-scrollbar p-1 -ml-1">
+                                        <div id="owner-filter-group" class="flex gap-2 w-full">
+                                            <button data-filter="all" class="bookmark-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">All</button>
+                                            <button data-filter="User" class="bookmark-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Users</button>
+                                            <button data-filter="Organization" class="bookmark-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Orgs</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="flex-[1.5]"> 
-                                <label class="block text-sm font-normal text-white mb-2 ml-1">
-                                    Category
-                                </label>
-                                <div class="flex overflow-x-auto no-scrollbar p-1 -ml-1">
-                                    <div id="topic-filter-group" class="flex gap-2 w-full">
-                                        <button data-topic="all" class="topic-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">All</button>
-                                        <button data-topic="ai" class="topic-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">AI/ML</button>
-                                        <button data-topic="agents" class="topic-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Agents</button>
-                                        <button data-topic="web" class="topic-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Web</button>
-                                        <button data-topic="tools" class="topic-toggle flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Tools</button>
+                                <div class="flex-[1.5]"> 
+                                    <label class="block text-sm font-normal text-white mb-2 ml-1">
+                                        Category
+                                    </label>
+                                    <div class="flex overflow-x-auto no-scrollbar p-1 -ml-1">
+                                        <div id="topic-filter-group" class="flex gap-2 w-full">
+                                            <button data-topic="all" class="topic-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">All</button>
+                                            <button data-topic="ai" class="topic-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">AI/ML</button>
+                                            <button data-topic="agents" class="topic-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Agents</button>
+                                            <button data-topic="web" class="topic-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Web</button>
+                                            <button data-topic="tools" class="topic-toggle active flex-1 px-3 py-2 flex items-center justify-center text-sm !w-auto">Tools</button>
+                                        </div>
                                     </div>
                                 </div>
+
                             </div>
 
-                        </div>
-
-                        <div>
-                          <div id="timeframe-group" class="grid grid-cols-5 gap-2">
-                            <button data-value="7" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
-                                7 Days
-                            </button>
-                            <button data-value="30" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm active-btn">
-                                30 Days
-                            </button>
-                            <button data-value="90" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
-                                90 Days
-                            </button>
-                            <button data-value="all" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
-                                All Time
-                            </button>
-                            <div class="relative">
-                                <button id="custom-btn-trigger" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
-                                    Custom
+                            <div>
+                              <div id="timeframe-group" class="grid grid-cols-5 gap-2">
+                                <button data-value="7" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
+                                    7 Days
                                 </button>
-                                
-                                <input type="number" 
-                                       id="custom-days-input" 
-                                       value="120" 
-                                       class="absolute inset-0 w-full h-full rounded-md bg-gray-900 text-[#e9de97] text-center text-sm font-medium border-2 border-[#e9de97] focus:ring-0 focus:outline-none hidden">
-                            </div>
-                          </div>
-                        </div>
-            
-                        <button id="fetchButton" class="w-full px-6 py-2 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors btn-pulse-glow">
-                            Find Trending Projects
-                        </button>
-                    </div>
-            
-                    <div id="loading" class="text-center hidden my-8">
-                        <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <p class="mt-2 text-gray-300">Finding repositories...</p>
-                    </div>
-            
-                    <div id="error" class="text-center text-red-400 font-medium hidden p-4 bg-red-900/50 rounded-lg my-6"></div>
-            
-                    <div id="results" class="hidden mt-8 border-t border-gray-700 pt-4">
-                        
-                        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-4 border-b border-gray-700">
-                            
-                            <h2 id="results-title" class="text-2xl font-semibold text-gray-100">
-                                Top Repos
-                            </h2>
-
-                            <div class="flex items-center gap-4 mt-2 md:mt-0">
-                                
-                                <div id="sort-container" class="flex items-center space-x-4 text-sm">
-                                    <span class="text-gray-500 font-medium pb-1">Sort by:</span>
+                                <button data-value="30" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm active-btn">
+                                    30 Days
+                                </button>
+                                <button data-value="90" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
+                                    90 Days
+                                </button>
+                                <button data-value="all" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
+                                    All Time
+                                </button>
+                                <div class="relative">
+                                    <button id="custom-btn-trigger" class="timeframe-btn timeframe-toggle px-3 py-2 text-sm">
+                                        Custom
+                                    </button>
                                     
-                                    <button data-sort="velocity" class="sort-btn pb-1 text-[#e9de97] font-bold hover:text-white transition-colors">
-                                        Velocity
+                                    <input type="number" 
+                                           id="custom-days-input" 
+                                           value="120" 
+                                           class="absolute inset-0 w-full h-full rounded-md bg-gray-900 text-[#e9de97] text-center text-sm font-medium border-2 border-[#e9de97] focus:ring-0 focus:outline-none hidden">
+                                </div>
+                              </div>
+                            </div>
+                
+                            <button id="fetchButton" class="w-full px-6 py-2 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors btn-pulse-glow">
+                                Find Trending Projects
+                            </button>
+                        </div>
+                        <div id="loading" class="text-center hidden my-8">
+                            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p class="mt-2 text-gray-300">Finding repositories...</p>
+                        </div>
+                
+                        <div id="error" class="text-center text-red-400 font-medium hidden p-4 bg-red-900/50 rounded-lg my-6"></div>
+                
+                        <div id="results" class="hidden mt-8 border-t border-gray-700 pt-4">
+                            
+                            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-4 border-b border-gray-700">
+                                
+                                <h2 id="results-title" class="text-2xl font-semibold text-gray-100">
+                                    Top Repos
+                                </h2>
+
+                                <div class="flex items-center gap-4 mt-2 md:mt-0">
+                                    
+                                    <div id="sort-container" class="flex items-center space-x-4 text-sm">
+                                        <span class="text-gray-500 font-medium">Sort by:</span>
+                                        
+                                        <button data-sort="velocity" class="sort-btn text-[#e9de97] font-bold hover:text-white transition-colors">
+                                            Velocity
+                                        </button>
+                                        <button data-sort="forks" class="sort-btn text-gray-400 font-medium hover:text-white transition-colors">
+                                            Forks
+                                        </button>
+                                        <button data-sort="stars" class="sort-btn text-gray-400 font-medium hover:text-white transition-colors">
+                                            Stars
+                                        </button>
+                                    </div>
+
+                                    <div class="h-5 w-px bg-gray-700 hidden md:block"></div>
+
+                                    <button id="showBookmarksBtn" class="bookmark-toggle !h-9 !w-auto !px-3 !py-0 flex items-center justify-center gap-2 shrink-0" title="Show Bookmarks">
+                                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 11.186 0Z" />
+                                        </svg>
+                                        <span id="bookmark-count" class="font-bold text-lg">0</span>
                                     </button>
-                                    <button data-sort="forks" class="sort-btn pb-1 text-gray-400 font-medium hover:text-white transition-colors">
-                                        Forks
-                                    </button>
-                                    <button data-sort="stars" class="sort-btn pb-1 text-gray-400 font-medium hover:text-white transition-colors">
-                                        Stars
+                                    
+                                </div>
+                            </div>
+                            
+                            <div class="max-h-[60vh] overflow-y-auto pr-2">
+                                <ul id="repo-list" class="space-y-4">
+                                    </ul>
+
+                                <div class="flex justify-center mt-6 pb-4">
+                                    <button id="loadMoreBtn" class="hidden w-full md:w-auto px-6 py-2 text-sm font-medium rounded-lg border-2 border-[#c9587c] text-[#c9587c] hover:bg-[#c9587c] hover:text-white transition-all duration-200">
+                                        Load Next Page
                                     </button>
                                 </div>
-
-                                <div class="h-5 w-px bg-gray-700 hidden md:block"></div>
-
-                                <button id="showBookmarksBtn" class="bookmark-toggle !h-9 !w-auto !px-3 !py-0 pb-1 flex items-center justify-center gap-2 shrink-0" title="Show Bookmarks">
-                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                      <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 11.186 0Z" />
-                                    </svg>
-                                    <span id="bookmark-count" class="font-bold text-lg">0</span>
-                                </button>
-                                
-                            </div>
+                            </div> 
                         </div>
-                        
-                        <div class="max-h-[60vh] overflow-y-auto pr-2">
-                            <ul id="repo-list" class="space-y-4">
-                                </ul>
 
-                            <div class="flex justify-center mt-6 pb-4">
-                                <button id="loadMoreBtn" class="hidden w-full md:w-auto px-6 py-2 text-sm font-medium rounded-lg border-2 border-[#c9587c] text-[#c9587c] hover:bg-[#c9587c] hover:text-white transition-all duration-200">
-                                    Load Next Page
-                                </button>
-                            </div>
-                        </div> 
-                    </div>
-
-                </div> </div> </div> </div>
-
-    <script src="app.js" type="module" defer></script>
+                    </div> </div> </div> 
+    </div> <script src="app.js" type="module" defer></script>
     
 </body>
 </html>

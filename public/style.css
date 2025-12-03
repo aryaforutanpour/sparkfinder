@@ -151,7 +151,7 @@ input[type="number"] {
     left: 0;
     right: 0;
     bottom: 0;
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    border: 1.5px solid rgba(255, 255, 255, 0.5);
     
 }
 
@@ -227,7 +227,7 @@ input[type="number"] {
   background-repeat: no-repeat;
   /* ---------------------------------------------- */
 
-  border: 1px solid #444; /* Slightly lighter border to define the edges */
+  border: 1.5px solid #444; /* Slightly lighter border to define the edges */
   border-radius: 0.5rem;
   padding: 2rem;
   width: 90%;
@@ -275,7 +275,7 @@ input[type="number"] {
 .profile-readme-content h3 {
   font-weight: 600;
   color: #f3f4f6;
-  border-bottom: 1px solid #374151;
+  border-bottom: 1.5px solid #374151;
   padding-bottom: 0.25rem;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
@@ -338,7 +338,7 @@ input[type="number"] {
 .bookmark-toggle {
     width: 100%;
     padding: 0.5rem 1rem; 
-    border: 2px solid var(--laude-text); 
+    border: 1.5px solid var(--laude-text); 
     color: var(--laude-text);
     font-family: 'Laude Title', 'Inter', sans-serif;
     font-size: 1rem;
@@ -386,7 +386,7 @@ input[type="number"] {
 
 
 .topic-toggle {
-    border: 2px solid #c9587c; 
+    border: 1.5px solid #c9587c; 
     color: #c9587c;            
     font-family: 'Laude Title', 'Inter', sans-serif;
     
@@ -407,27 +407,40 @@ input[type="number"] {
     color: white;
 }
 
-/* NEW: Gold Outline Theme for Timeframe */
+/* --- TIMEFRAME BUTTONS (Gold Theme - Fixed Thickness) --- */
+
+/* 1. Base State */
 .timeframe-toggle {
-    border: 2px solid var(--laude-accent); /* #e9de97 */
-    color: var(--laude-accent);
+    /* CHANGED: 2px thickness to match other buttons */
+    border: 1.5px solid var(--laude-accent) !important; 
+    
+    color: var(--laude-accent) !important;
+    background-color: transparent !important;
+    
     font-family: 'Laude Title', 'Inter', sans-serif;
     font-weight: 500;
     border-radius: 0.5rem;
     transition: all 0.2s ease-in-out;
-    background-color: transparent;
     width: 100%;
 }
 
+/* 2. Hover State (Gold Tint, NO BLUE) */
 .timeframe-toggle:hover {
-    background-color: rgba(233, 222, 151, 0.1); /* Low opacity gold */
+    background-color: rgba(233, 222, 151, 0.15) !important;
+    box-shadow: 0 0 10px rgba(233, 222, 151, 0.2);
 }
 
-/* Active State: Filled Gold with Dark Text */
+/* 3. Active State (Solid Gold) */
 .timeframe-toggle.active-btn {
-    background-color: var(--laude-accent);
-    color: var(--dark-text); 
-    font-weight: 600;
+    background-color: var(--laude-accent) !important;
+    color: #000000 !important;
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(233, 222, 151, 0.4);
+}
+
+/* 4. Active Hover (Darker Gold) */
+.timeframe-toggle.active-btn:hover {
+    background-color: #d9ce8a !important;
 }
 
 /* --- BLINKING RED MODULE --- */
@@ -469,4 +482,49 @@ input[type="number"] {
 }
 .blinking-red-btn.armed .sentry-dot {
     animation: sentry-pulse 2s infinite;
+}
+
+/* --- Laude Gold Button --- */
+.laude-gold-btn {
+    /* FIXED: Permanent Dark Gold Background (Matches Sentry's style) */
+    background-color: rgba(50, 45, 0, 0.5); 
+    
+    border: 1.5px solid var(--laude-accent);
+    color: var(--laude-accent);
+    
+    font-size: 0.75rem; 
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    
+    border-radius: 9999px;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    cursor: pointer;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+}
+
+.laude-gold-btn:hover {
+    /* Slightly brighter and more opaque on hover */
+    background-color: rgba(233, 222, 151, 0.15);
+    box-shadow: 0 0 15px rgba(233, 222, 151, 0.3);
+}
+
+/* Active State (Solid Gold) */
+.laude-gold-btn.active {
+    background-color: var(--laude-accent);
+    color: #000000;
+    box-shadow: 0 0 15px rgba(233, 222, 151, 0.5);
+}
+
+/* --- Disabled Filter State (The Grey Out Effect) --- */
+.filters-disabled {
+    opacity: 0.3 !important;       /* Makes it faded */
+    pointer-events: none !important; /* Makes it unclickable */
+    filter: grayscale(100%) !important; /* Removes color */
+    transition: all 0.3s ease;
 }
