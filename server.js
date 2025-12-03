@@ -330,7 +330,7 @@ app.get('/api/sentry-scan', async (req, res) => {
         // 6. Send Emails (Professional "Spark Detected" Template)
         for (const sub of subscribers) {
             await resend.emails.send({
-                from: 'Spark-Finder <onboarding@resend.dev>', // Keep default for Free Tier
+                from: 'Spark-Finder Sentry <system@sentry.livelaughlau.de>', // Keep default for Free Tier
                 to: sub.email,
                 subject: `Spark Detected: ${winner.full_name} is trending`, 
                 html: `

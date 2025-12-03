@@ -1,0 +1,17 @@
+name: Sentry Trigger
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  # Allows you to click "Run workflow" manually in GitHub for testing
+  workflow_dispatch:
+
+jobs:
+  wake_up_sentry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Sentry Scan
+        run: |
+          # UPDATE THIS LINK to your real Vercel URL
+          curl -X GET https://spark-finder.vercel.app/api/sentry-scan
