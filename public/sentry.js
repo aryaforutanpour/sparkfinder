@@ -1,196 +1,162 @@
-// --- Endpoint 8: The Automatic Scanner (CRON Job) ---
-app.get('/api/sentry-scan', async (req, res) => {
-    console.log("[Sentry] Starting rigorous scan...");
+/* === public/sentry.js === */
+
+export function initSentry() {
+    const sentryBtn = document.getElementById('blinkingRedTrigger');
+    const sentryText = document.getElementById('sentry-text');
+
+    if (!sentryBtn) return; 
+
+    // 1. Check Memory (Persistence)
+    if (localStorage.getItem('blinkingRedArmed') === 'true') {
+        armSystem(sentryBtn, sentryText);
+    }
+
+    // 2. Event Listener
+    sentryBtn.addEventListener('click', () => {
+        if (sentryBtn.classList.contains('armed')) {
+            openUnsubscribeModal(sentryBtn, sentryText);
+        } else {
+            openSentryModal(sentryBtn, sentryText);
+        }
+    });
+}
+
+// --- Internal Helper Functions ---
+
+function armSystem(btn, textSpan) {
+    btn.classList.add('armed');
+    if (textSpan) textSpan.textContent = "SENTRY ACTIVE";
+    localStorage.setItem('blinkingRedArmed', 'true');
+}
+
+function disarmSystem(btn, textSpan) {
+    btn.classList.remove('armed');
+    if (textSpan) textSpan.textContent = "Enable Sentry";
+    localStorage.removeItem('blinkingRedArmed');
+    localStorage.removeItem('sentryEmail'); 
+}
+
+// --- MODAL 1: SUBSCRIBE (ARM) ---
+function openSentryModal(btn, textSpan) {
+    const modal = createModalBase();
+    const content = modal.querySelector('.profile-modal-content');
     
-    if (!supabase || !resend) {
-        console.error("[Sentry] Abort: Missing DB or Email service.");
-        return res.status(500).json({ message: "Services not ready." });
-    }
+    content.innerHTML += `
+        <div class="flex flex-col items-center mb-4 relative h-6 w-full">
+            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-500 rounded-full"></div>
+        </div>
+        <h2 class="text-xl font-bold text-red-500 mb-2 tracking-widest uppercase">Blinking Red</h2>
+        <p class="text-gray-400 text-sm mb-6">
+            Receive an <span class="text-red-400">email</span> when a repo meets the <span class="font-bold text-white">Traction Threshold</span>.
+        </p>
+        <input type="email" id="sentry-email" placeholder="Enter email..." 
+               class="w-full bg-gray-900 border border-gray-700 text-white rounded p-3 mb-4 focus:border-red-500 focus:outline-none text-center placeholder-gray-600">
+        <button id="activate-sentry-btn" class="w-full bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900 font-bold py-2 rounded transition-all uppercase tracking-wider">
+            Enable Notifications
+        </button>
+        <button class="profile-modal-close" style="top: 10px; right: 15px;">&times;</button>
+    `;
 
-    // --- HELPER: Academic Detection ---
-    function isResearcher(user) {
-        const text = ((user.bio || '') + ' ' + (user.company || '') + ' ' + (user.email || '')).toLowerCase();
-        // Keywords for Schools, Labs, and Research Institutes
-        const academicKeywords = [
-            'lab', 'research', 'institute', 'university', 'college', 'school', 'academy',
-            'phd', 'candidate', 'student', 'professor', 'fellow', 'scientist',
-            'berkeley', 'mit', 'stanford', 'cmu', 'harvard', 'oxford', 'cambridge',
-            '.edu', 'alumni'
-        ];
-        return academicKeywords.some(keyword => text.includes(keyword));
-    }
+    setupModalClose(modal);
 
-    try {
-        // 1. SEARCH PHASE: Fetch Fresh Repos (Strictly <= 3 days old)
-        const daysAgo = 3;
-        const date = new Date();
-        date.setDate(date.getDate() - daysAgo);
-        const dateStr = date.toISOString().split('T')[0];
+    const activateBtn = modal.querySelector('#activate-sentry-btn');
+    const input = modal.querySelector('#sentry-email');
+    
+    activateBtn.onclick = async () => {
+        const email = input.value;
+        if (!email.includes('@')) { alert("Invalid email."); return; }
         
-        const pat = process.env.GITHUB_PAT;
-        const query = `created:>=${dateStr}`;
-        const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=20`;
+        activateBtn.textContent = "Establishing Link...";
+        activateBtn.disabled = true;
         
-        const githubRes = await fetch(url, { headers: { 'Authorization': `token ${pat}` } });
-        const data = await githubRes.json();
-        const repos = data.items || [];
-
-        // 2. FILTER PHASE: The Gauntlet
-        // We process candidates one by one to save API tokens. First match wins.
-        let winner = null;
-
-        for (const repo of repos) {
-            console.log(`[Sentry] Inspecting candidate: ${repo.full_name}...`);
-
-            // CHECK A: Age & Velocity (At least 70 stars/day)
-            // Since max age is 3 days, we can just check total stars >= (70 * daysOld)
-            // But simplified: If it has > 210 stars in 3 days, it definitely meets the bar.
-            // Let's stick to the user's explicit math:
-            const createdDate = new Date(repo.created_at);
-            const today = new Date();
-            const daysOld = Math.max(1, Math.ceil(Math.abs(today - createdDate) / (1000 * 60 * 60 * 24)));
-            const velocity = repo.stargazers_count / daysOld;
-
-            if (velocity < 70) {
-                console.log(`   -> Failed Velocity: ${velocity.toFixed(1)}/day`);
-                continue;
-            }
-
-            // CHECK B: Individual User (Not Organization)
-            if (repo.owner.type !== 'User') {
-                console.log(`   -> Failed Type: Is Organization`);
-                continue;
-            }
-
-            // CHECK C: Check History Log (Dedup)
-            const { data: sentLogs } = await supabase.from('sent_logs').select('repo_name').eq('repo_name', repo.full_name);
-            if (sentLogs && sentLogs.length > 0) {
-                console.log(`   -> Failed: Already sent`);
-                continue;
-            }
-
-            // --- API HEAVY CHECKS START HERE ---
-
-            // CHECK D: Researcher Affiliation
-            // Fetch User Profile
-            const userRes = await fetch(repo.owner.url, { headers: { 'Authorization': `token ${pat}` } });
-            const userProfile = await userRes.json();
-            
-            if (!isResearcher(userProfile)) {
-                console.log(`   -> Failed Identity: Not clearly a researcher`);
-                continue; 
-            }
-
-            // CHECK E: Commit Activity (> 5 commits)
-            // We fetch the last 6 commits to be safe
-            const commitsRes = await fetch(`https://api.github.com/repos/${repo.full_name}/commits?per_page=6`, { headers: { 'Authorization': `token ${pat}` } });
-            const commits = await commitsRes.json();
-            
-            // Note: If repo is empty, commits might be message object or empty array
-            if (!Array.isArray(commits) || commits.length < 5) {
-                console.log(`   -> Failed Activity: Only ${commits.length || 0} commits`);
-                continue;
-            }
-
-            // CHECK F: Social Buzz (Must have ANY mentions)
-            // We reuse your existing logic.
-            const buzz = await fetchAllBuzz(repo.full_name, 30); // Check last 30 days of buzz
-            const totalBuzz = buzz.hackerNewsPosts.length + buzz.redditPosts.length + buzz.twitterPosts.length;
-
-            if (totalBuzz === 0) {
-                console.log(`   -> Failed Buzz: Silence on social media`);
-                continue;
-            }
-
-            // IF WE MADE IT HERE: WE HAVE A WINNER
-            winner = repo;
-            console.log(`[Sentry] WINNER FOUND: ${repo.full_name}`);
-            break; // Stop looking, we only send 1 alert per scan
-        }
-
-        if (!winner) {
-            console.log("[Sentry] No candidates passed the gauntlet.");
-            return res.json({ message: "No sparks passed validation." });
-        }
-
-        // 3. ALERT PHASE: Send Emails
-        const { data: subscribers } = await supabase.from('subscribers').select('email');
-        if (!subscribers || subscribers.length === 0) return res.json({ message: "No subscribers." });
-
-        for (const sub of subscribers) {
-            await resend.emails.send({
-                from: 'Spark-Finder Sentry <system@sentry.livelaughlau.de>',
-                to: sub.email,
-                subject: `Spark Detected: ${winner.full_name} (Researcher)`, 
-                html: `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <style>
-                    body { background-color: #0f1117; margin: 0; padding: 0; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-                    .container { max-width: 600px; margin: 40px auto; background: #1f2937; border: 1px solid #374151; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-                    .header { background: #111827; padding: 30px 20px; text-align: center; border-bottom: 1px solid #374151; }
-                    .logo { color: #7592fd; font-weight: 800; font-size: 20px; letter-spacing: -0.5px; text-transform: uppercase; margin: 0; }
-                    .badge { display: inline-block; background: rgba(233, 222, 151, 0.15); color: #e9de97; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 4px; margin-top: 10px; border: 1px solid rgba(233, 222, 151, 0.3); }
-                    .content { padding: 30px 40px; }
-                    .repo-name { color: #ffffff; font-size: 24px; font-weight: 700; margin: 0 0 10px; }
-                    .description { color: #9ca3af; font-size: 15px; line-height: 1.6; margin-bottom: 25px; }
-                    .stats-grid { display: table; width: 100%; margin-bottom: 30px; background: #111827; border-radius: 8px; border: 1px solid #374151; }
-                    .stat-cell { display: table-cell; width: 33%; padding: 15px; border-right: 1px solid #374151; text-align: center; }
-                    .stat-cell:last-child { border-right: none; }
-                    .stat-label { color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px; }
-                    .stat-value { color: #e9de97; font-size: 18px; font-weight: 700; }
-                    .btn-container { text-align: center; margin-top: 10px; }
-                    .btn { background: #7592fd; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 15px; transition: background 0.2s; }
-                    .footer { text-align: center; padding: 30px 20px; color: #6b7280; font-size: 12px; line-height: 1.5; }
-                    .footer a { color: #6b7280; text-decoration: underline; }
-                  </style>
-                </head>
-                <body>
-                  <div class="container">
-                    <div class="header">
-                      <p class="logo">⚡ Spark-Finder</p>
-                      <div class="badge">ACADEMIC SPARK DETECTED</div>
-                    </div>
-                    <div class="content">
-                      <h2 class="repo-name">${winner.full_name}</h2>
-                      <p class="description">${winner.description || 'No description provided.'}</p>
-                      <div class="stats-grid">
-                        <div class="stat-cell">
-                          <div class="stat-label">Stars</div>
-                          <div class="stat-value">${winner.stargazers_count}</div>
-                        </div>
-                        <div class="stat-cell">
-                          <div class="stat-label">Daily Vel</div>
-                          <div class="stat-value">${(winner.stargazers_count / 3).toFixed(0)}+</div>
-                        </div>
-                        <div class="stat-cell">
-                          <div class="stat-label">Type</div>
-                          <div class="stat-value">Researcher</div>
-                        </div>
-                      </div>
-                      <div class="btn-container">
-                        <a href="${winner.html_url}" class="btn">View Research</a>
-                      </div>
-                    </div>
-                    <div class="footer">
-                      Sentry Alert • Traction Threshold Met<br/>
-                      <a href="#">Unsubscribe</a>
-                    </div>
-                  </div>
-                </body>
-                </html>
-                `
+        try {
+            const res = await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
             });
-        }
+            const data = await res.json();
 
-        // 4. Log to History
-        await supabase.from('sent_logs').insert([{ repo_name: winner.full_name }]);
+            if (res.ok) {
+                localStorage.setItem('sentryEmail', email);
+                setTimeout(() => { modal.remove(); armSystem(btn, textSpan); }, 500);
+            } else {
+                alert(data.message);
+                activateBtn.textContent = "Initialize System";
+                activateBtn.disabled = false;
+            }
+        } catch (e) { console.error(e); alert("Connection Failed"); activateBtn.disabled = false; }
+    };
+}
 
-        res.json({ message: `Sent academic alert for ${winner.full_name}.` });
+// --- MODAL 2: UNSUBSCRIBE (DISARM) ---
+function openUnsubscribeModal(btn, textSpan) {
+    const modal = createModalBase();
+    const content = modal.querySelector('.profile-modal-content');
+    
+    const savedEmail = localStorage.getItem('sentryEmail') || '';
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
-    }
-});
+    content.innerHTML += `
+        <div class="flex flex-col items-center mb-4">
+            <svg class="w-8 h-8 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-300 mb-2 tracking-widest uppercase">Disarm Sentry?</h2>
+        <p class="text-gray-400 text-sm mb-6">
+            Enter your email to confirm deactivation. You will no longer receive alerts.
+        </p>
+        <input type="email" id="disarm-email" value="${savedEmail}" placeholder="Confirm email..." 
+               class="w-full bg-gray-900 border border-gray-700 text-white rounded p-3 mb-4 focus:border-gray-500 focus:outline-none text-center placeholder-gray-600">
+        <button id="deactivate-sentry-btn" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 font-bold py-2 rounded transition-all uppercase tracking-wider">
+            Confirm Deactivation
+        </button>
+        <button class="profile-modal-close" style="top: 10px; right: 15px;">&times;</button>
+    `;
+
+    setupModalClose(modal);
+
+    const deactivateBtn = modal.querySelector('#deactivate-sentry-btn');
+    const input = modal.querySelector('#disarm-email');
+
+    deactivateBtn.onclick = async () => {
+        const email = input.value;
+        if (!email.includes('@')) { alert("Invalid email."); return; }
+
+        deactivateBtn.textContent = "Severing Link...";
+        deactivateBtn.disabled = true;
+
+        try {
+            const res = await fetch('/api/unsubscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            if (res.ok) {
+                setTimeout(() => { modal.remove(); disarmSystem(btn, textSpan); }, 500);
+            } else {
+                alert("Failed to unsubscribe. Email might not match records.");
+                deactivateBtn.textContent = "Confirm Deactivation";
+                deactivateBtn.disabled = false;
+            }
+        } catch (e) { console.error(e); alert("Connection Failed"); deactivateBtn.disabled = false; }
+    };
+}
+
+// --- Shared Modal Utilities ---
+function createModalBase() {
+    const modal = document.createElement('div');
+    modal.className = 'profile-modal-backdrop'; 
+    modal.innerHTML = `
+        <div class="profile-modal-content text-center" style="border-color: #374151; box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);"></div>
+    `;
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function setupModalClose(modal) {
+    const closeBtn = modal.querySelector('.profile-modal-close');
+    const removeModal = () => modal.remove();
+    closeBtn.onclick = removeModal;
+    modal.onclick = (e) => { if (e.target === modal) removeModal(); };
+}
