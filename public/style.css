@@ -443,13 +443,13 @@ input[type="number"] {
     background-color: #d9ce8a !important;
 }
 
-/* --- BLINKING SENTRY MODULE (Pink Theme) --- */
+/* --- BLINKING SENTRY MODULE (Periwinkle Theme) --- */
 .blinking-red-btn {
-    border: 1px solid #c9587c; /* Laude Pink */
-    color: #c9587c;
+    border: 1px solid #99aaff; /* Periwinkle Border */
+    color: #99aaff;            /* Periwinkle Text */
     
-    /* Dark Pink Tint Background */
-    background: rgba(201, 88, 124, 0.15); 
+    /* Periwinkle Tint */
+    background: rgba(153, 170, 255, 0.15); 
     
     font-size: 0.75rem;
     font-weight: 600;
@@ -465,20 +465,20 @@ input[type="number"] {
 }
 
 .blinking-red-btn:hover {
-    background: rgba(201, 88, 124, 0.25);
-    box-shadow: 0 0 15px rgba(201, 88, 124, 0.3);
+    background: rgba(153, 170, 255, 0.25);
+    box-shadow: 0 0 15px rgba(153, 170, 255, 0.3);
 }
 
 .blinking-red-btn.armed {
-    border-color: #c9587c;
-    background: rgba(201, 88, 124, 0.2);
-    color: #c9587c;
+    border-color: #99aaff;
+    background: rgba(153, 170, 255, 0.2);
+    color: #99aaff;
 }
 
 .sentry-dot {
     width: 8px;
     height: 8px;
-    background-color: #c9587c; /* Pink Dot */
+    background-color: #99aaff; /* Periwinkle Dot */
     border-radius: 50%;
     display: inline-block;
 }
@@ -489,27 +489,31 @@ input[type="number"] {
 
 @keyframes sentry-pulse {
     0% {
-        box-shadow: 0 0 0 0 rgba(201, 88, 124, 0.7);
+        box-shadow: 0 0 0 0 rgba(153, 170, 255, 0.7);
     }
     70% {
-        box-shadow: 0 0 0 6px rgba(201, 88, 124, 0);
+        box-shadow: 0 0 0 6px rgba(153, 170, 255, 0);
     }
     100% {
-        box-shadow: 0 0 0 0 rgba(201, 88, 124, 0);
+        box-shadow: 0 0 0 0 rgba(153, 170, 255, 0);
     }
 }
-/* --- Laude Gold Button --- */
+
+/* --- LAUDE LIST BUTTON (Matches Category Pink) --- */
 .laude-gold-btn {
-    /* FIXED: Permanent Dark Gold Background (Matches Sentry's style) */
-    background-color: rgba(50, 45, 0, 0.5); 
+    /* Color: #c9587c (Laude Pink) */
+    border: 1px solid #c9587c; 
+    color: #c9587c;            
     
-    border: 1.5px solid var(--laude-accent);
-    color: var(--laude-accent);
+    /* Background: Dark Pink Tint */
+    background-color: rgba(201, 88, 124, 0.15) !important; 
     
+    /* Glow Effect */
+    box-shadow: 0 0 12px rgba(201, 88, 124, 0.3);
+
     font-size: 0.75rem; 
-    font-weight: 600;
+    font-weight: 700; 
     padding: 0.25rem 0.75rem;
-    
     border-radius: 9999px;
     letter-spacing: 0.05em;
     transition: all 0.3s ease;
@@ -523,22 +527,28 @@ input[type="number"] {
 }
 
 .laude-gold-btn:hover {
-    /* Slightly brighter and more opaque on hover */
-    background-color: rgba(233, 222, 151, 0.15);
-    box-shadow: 0 0 15px rgba(233, 222, 151, 0.3);
+    background-color: rgba(201, 88, 124, 0.25) !important;
+    box-shadow: 0 0 20px rgba(201, 88, 124, 0.5);
 }
 
-/* Active State (Solid Gold) */
 .laude-gold-btn.active {
-    background-color: var(--laude-accent);
-    color: #000000;
-    box-shadow: 0 0 15px rgba(233, 222, 151, 0.5);
+    background-color: #c9587c !important;
+    color: #ffffff;
+    box-shadow: 0 0 25px rgba(201, 88, 124, 0.6);
 }
 
-/* --- Disabled Filter State (The Grey Out Effect) --- */
+/* --- 1. Laude Button ACTIVE State (Turns Grey) --- */
+.laude-gold-btn.active {
+    background-color: rgba(107, 114, 128, 0.5) !important; /* Grey Tint */
+    border-color: #9ca3af !important;                      /* Light Grey Border */
+    color: #f3f4f6 !important;                             /* White/Grey Text */
+    box-shadow: 0 0 15px rgba(156, 163, 175, 0.4);         /* Grey Glow */
+}
+
+/* --- 2. The "Grey Out" Effect for Filters --- */
 .filters-disabled {
-    opacity: 0.3 !important;       /* Makes it faded */
-    pointer-events: none !important; /* Makes it unclickable */
+    opacity: 0.3 !important;       /* Fades it out */
+    pointer-events: none !important; /* Stops clicks */
     filter: grayscale(100%) !important; /* Removes color */
     transition: all 0.3s ease;
 }
