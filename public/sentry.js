@@ -36,25 +36,34 @@ function disarmSystem(btn, textSpan) {
     localStorage.removeItem('sentryEmail'); 
 }
 
-// --- MODAL 1: SUBSCRIBE (ARM) ---
+// --- MODAL 1: SUBSCRIBE (ARM - Periwinkle Theme) ---
 function openSentryModal(btn, textSpan) {
     const modal = createModalBase();
     const content = modal.querySelector('.profile-modal-content');
     
+    // --- UPDATED: Swapped Red classes for Hex Code #99aaff (Periwinkle) ---
+    // We also updated the border color of the container style below
+    content.style.borderColor = "#99aaff";
+    content.style.boxShadow = "0 0 30px rgba(153, 170, 255, 0.2)";
+
     content.innerHTML += `
         <div class="flex flex-col items-center mb-4 relative h-6 w-full">
-            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
-            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-500 rounded-full"></div>
+            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#99aaff] rounded-full animate-ping"></div>
+            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#99aaff] rounded-full"></div>
         </div>
-        <h2 class="text-xl font-bold text-red-500 mb-2 tracking-widest uppercase">Blinking Red</h2>
+        
+        <h2 class="text-xl font-bold text-[#99aaff] mb-2 tracking-widest uppercase">Sentry System</h2>
         <p class="text-gray-400 text-sm mb-6">
-            Receive an <span class="text-red-400">email</span> when a repo meets the <span class="font-bold text-white">Traction Threshold</span>.
+            Receive an <span class="text-[#99aaff] font-bold">email</span> when a repo reaches the <span class="font-bold text-white">Traction Threshold</span>.
         </p>
-        <input type="email" id="sentry-email" placeholder="Enter email..." 
-               class="w-full bg-gray-900 border border-gray-700 text-white rounded p-3 mb-4 focus:border-red-500 focus:outline-none text-center placeholder-gray-600">
-        <button id="activate-sentry-btn" class="w-full bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900 font-bold py-2 rounded transition-all uppercase tracking-wider">
+        
+        <input type="email" id="sentry-email" placeholder="Enter secure email..." 
+               class="w-full bg-gray-900 border border-gray-700 text-white rounded p-3 mb-4 focus:border-[#99aaff] focus:outline-none text-center placeholder-gray-600">
+        
+        <button id="activate-sentry-btn" class="w-full bg-[#99aaff]/10 hover:bg-[#99aaff]/20 text-[#99aaff] border border-[#99aaff]/50 font-bold py-2 rounded transition-all uppercase tracking-wider">
             Enable Notifications
         </button>
+        
         <button class="profile-modal-close" style="top: 10px; right: 15px;">&times;</button>
     `;
 
@@ -90,7 +99,7 @@ function openSentryModal(btn, textSpan) {
     };
 }
 
-// --- MODAL 2: UNSUBSCRIBE (DISARM) ---
+// --- MODAL 2: UNSUBSCRIBE (DISARM - Grey/Neutral Theme) ---
 function openUnsubscribeModal(btn, textSpan) {
     const modal = createModalBase();
     const content = modal.querySelector('.profile-modal-content');
