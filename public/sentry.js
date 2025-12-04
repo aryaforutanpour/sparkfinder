@@ -57,7 +57,7 @@ function openSentryModal(btn, textSpan) {
             Receive an <span class="text-[#99aaff] font-bold">email</span> when a repo reaches the <span class="font-bold text-white">Traction Threshold</span>.
         </p>
         
-        <input type="email" id="sentry-email" placeholder="Enter secure email..." 
+        <input type="email" id="sentry-email" placeholder="Enter email..." 
                class="w-full bg-gray-900 border border-gray-700 text-white rounded p-3 mb-4 focus:border-[#99aaff] focus:outline-none text-center placeholder-gray-600">
         
         <button id="activate-sentry-btn" class="w-full bg-[#99aaff]/10 hover:bg-[#99aaff]/20 text-[#99aaff] border border-[#99aaff]/50 font-bold py-2 rounded transition-all uppercase tracking-wider">
