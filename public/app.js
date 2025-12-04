@@ -25,7 +25,7 @@ const ownerFilterGroup = document.getElementById('owner-filter-group');
 const topicFilterGroup = document.getElementById('topic-filter-group'); 
 const sortContainer = document.getElementById('sort-container'); 
 
-// --- NEW: Laude List Constants ---
+// --- Laude List Constants ---
 const laudeListBtn = document.getElementById('laudeListBtn');
 const standardFiltersContainer = document.getElementById('standard-filters-container');
 let isLaudeMode = false;
@@ -62,7 +62,7 @@ if (laudeListBtn) {
             resultsTitle.innerHTML = `<span class="text-[#e9de97]">✦ Laude List</span> (Active Researchers)`;
             repoList.innerHTML = '';
             showLoading(true);
-            results.classList.remove('hidden'); // Ensure results container is visible
+            results.classList.remove('hidden'); 
 
             try {
                 const res = await fetch('/api/laude-list');
@@ -86,16 +86,22 @@ if (laudeListBtn) {
             }
 
         } else {
-            // --- TURN OFF LAUDE MODE (Restore Standard) ---
+            // --- TURN OFF LAUDE MODE (Manual Reset) ---
             laudeListBtn.classList.remove('active');
             standardFiltersContainer.classList.remove('filters-disabled');
             
-            // Re-enable UI elements
+            // Re-enable UI elements but HIDE them until a search happens
             if (sortContainer) sortContainer.classList.remove('hidden');
-            // Check logic for loadMoreBtn handled in renderResults
+            loadMoreBtn.classList.add('hidden');
             
-            // Trigger a fresh search to reset the view to standard data
-            fetchButton.click(); 
+            // --- UPDATED LOGIC: Clear screen and wait for user ---
+            results.classList.add('hidden');  // Hide results box
+            repoList.innerHTML = '';          // Wipe list
+            currentRepoList = [];             // Reset memory
+            resultsTitle.textContent = "Top Repos"; // Reset title
+            
+            // NOTE: We do NOT call fetchButton.click() here anymore.
+            // The app now waits for the user to select a timeframe.
         }
     });
 }

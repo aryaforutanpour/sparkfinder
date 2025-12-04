@@ -443,11 +443,14 @@ input[type="number"] {
     background-color: #d9ce8a !important;
 }
 
-/* --- BLINKING RED MODULE --- */
+/* --- BLINKING SENTRY MODULE (Pink Theme) --- */
 .blinking-red-btn {
-    border: 1px solid #ff4444;
-    color: #ff4444;
-    background: rgba(50, 0, 0, 0.5);
+    border: 1px solid #c9587c; /* Laude Pink */
+    color: #c9587c;
+    
+    /* Dark Pink Tint Background */
+    background: rgba(201, 88, 124, 0.15); 
+    
     font-size: 0.75rem;
     font-weight: 600;
     padding: 0.25rem 0.75rem;
@@ -458,32 +461,43 @@ input[type="number"] {
     align-items: center;
     gap: 0.5rem;
     text-transform: uppercase;
+    height: 28px;
 }
+
 .blinking-red-btn:hover {
-    background: rgba(255, 68, 68, 0.1);
-    box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
+    background: rgba(201, 88, 124, 0.25);
+    box-shadow: 0 0 15px rgba(201, 88, 124, 0.3);
 }
+
+.blinking-red-btn.armed {
+    border-color: #c9587c;
+    background: rgba(201, 88, 124, 0.2);
+    color: #c9587c;
+}
+
 .sentry-dot {
     width: 8px;
     height: 8px;
-    background-color: #ff4444;
+    background-color: #c9587c; /* Pink Dot */
     border-radius: 50%;
     display: inline-block;
 }
-@keyframes sentry-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
-    70% { box-shadow: 0 0 0 6px rgba(255, 68, 68, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
-}
-.blinking-red-btn.armed {
-    border-color: #ff4444;
-    background: rgba(255, 68, 68, 0.1);
-    color: #ff4444;
-}
+
 .blinking-red-btn.armed .sentry-dot {
     animation: sentry-pulse 2s infinite;
 }
 
+@keyframes sentry-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(201, 88, 124, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(201, 88, 124, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(201, 88, 124, 0);
+    }
+}
 /* --- Laude Gold Button --- */
 .laude-gold-btn {
     /* FIXED: Permanent Dark Gold Background (Matches Sentry's style) */
