@@ -29,6 +29,7 @@ const sortContainer = document.getElementById('sort-container');
 const laudeListBtn = document.getElementById('laudeListBtn');
 const standardFiltersContainer = document.getElementById('standard-filters-container');
 let isLaudeMode = false;
+let laudeCache = null; // <--- NEW: Stores the VIP list so we don't re-fetch
 
 // --- Variables ---
 let bookmarks = [];           
@@ -61,14 +62,26 @@ if (laudeListBtn) {
             // Update Title
             resultsTitle.innerHTML = `<span class="text-[#e9de97]">✦ Laude List</span> (Active Researchers)`;
             repoList.innerHTML = '';
-            showLoading(true);
             results.classList.remove('hidden'); 
+
+            // --- CACHE CHECK: If we have data, use it instantly ---
+            if (laudeCache) {
+                currentRepoList = laudeCache;
+                displayResults(laudeCache);
+                return; // STOP HERE (Don't fetch again)
+            }
+
+            // --- FETCH: Only runs if cache is empty ---
+            showLoading(true);
 
             try {
                 const res = await fetch('/api/laude-list');
                 if (!res.ok) throw new Error("Failed to fetch Laude List");
                 
                 const vipRepos = await res.json();
+                
+                // Save to Cache
+                laudeCache = vipRepos;
                 currentRepoList = vipRepos; 
                 
                 showLoading(false);
@@ -94,14 +107,11 @@ if (laudeListBtn) {
             if (sortContainer) sortContainer.classList.remove('hidden');
             loadMoreBtn.classList.add('hidden');
             
-            // --- UPDATED LOGIC: Clear screen and wait for user ---
-            results.classList.add('hidden');  // Hide results box
-            repoList.innerHTML = '';          // Wipe list
-            currentRepoList = [];             // Reset memory
-            resultsTitle.textContent = "Top Repos"; // Reset title
-            
-            // NOTE: We do NOT call fetchButton.click() here anymore.
-            // The app now waits for the user to select a timeframe.
+            // Clear screen and wait for user
+            results.classList.add('hidden');  
+            repoList.innerHTML = '';          
+            currentRepoList = [];             
+            resultsTitle.textContent = "Top Repos"; 
         }
     });
 }

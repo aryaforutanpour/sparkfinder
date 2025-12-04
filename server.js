@@ -130,7 +130,7 @@ app.get('/api/search', async (req, res) => {
     }
 });
 
-// --- Endpoint 1.5: The Laude List (Efficient Parallel Fetch + Freshness Filter) ---
+// --- Endpoint 1.5: The Laude List (Active + Fresh + Descriptive) ---
 app.get('/api/laude-list', async (req, res) => {
     const pat = process.env.GITHUB_PAT;
     if (!pat) return res.status(500).json({ message: 'GitHub PAT missing.' });
@@ -160,26 +160,29 @@ app.get('/api/laude-list', async (req, res) => {
         const resultsArrays = await Promise.all(requests);
         let allRepos = resultsArrays.flat();
 
-        // 3. THE DOUBLE FILTER (Active + Fresh)
-        const activeFreshRepos = allRepos.filter(repo => {
+        // 3. THE TRIPLE FILTER (Active + Fresh + Description)
+        const curatedRepos = allRepos.filter(repo => {
             const pushedDate = new Date(repo.pushed_at);
             const createdDate = new Date(repo.created_at);
             
             // Rule 1: Must be active in the last 30 days
             const isActive = pushedDate >= activeLimit;
             
-            // Rule 2: Must be created in the last 90 days (No legacy projects)
+            // Rule 2: Must be created in the last 90 days
             const isFresh = createdDate >= freshnessLimit;
 
-            return isActive && isFresh;
+            // Rule 3: Must have a description (NEW)
+            const hasDescription = repo.description && repo.description.trim().length > 0;
+
+            return isActive && isFresh && hasDescription;
         });
 
         // 4. SORT (Stars)
-        activeFreshRepos.sort((a, b) => b.stargazers_count - a.stargazers_count);
+        curatedRepos.sort((a, b) => b.stargazers_count - a.stargazers_count);
 
         // 5. Format for Frontend
         const today = new Date();
-        const formattedResults = activeFreshRepos.map(repo => {
+        const formattedResults = curatedRepos.map(repo => {
             const createdDate = new Date(repo.created_at);
             const diffDays = Math.max(1, Math.ceil(Math.abs(today - createdDate) / (1000 * 60 * 60 * 24)));
             
@@ -199,7 +202,7 @@ app.get('/api/laude-list', async (req, res) => {
             };
         });
 
-        console.log(`[Laude List] Processed ${allRepos.length} repos -> Found ${formattedResults.length} fresh & active.`);
+        console.log(`[Laude List] Processed ${allRepos.length} repos -> Found ${formattedResults.length} high-quality.`);
         res.json(formattedResults);
 
     } catch (err) {
