@@ -28,7 +28,17 @@ const LAUDE_VIPS = [
     'harshraj172',      // Harsh Raj (Harbor/TBench Contributor)
     'ibercovich',       // Ivan Bercovich (Active TBench Contributor)
     'YanhaoLi-Cc',      // Top contributor to TerminalBench
-    'kobe0938'          // Top contributor to TerminalBench
+    'kobe0938',         // Top contributor to TerminalBench
+
+    // --- NEW: STANFORD / BERKELEY PHD COHORT ---
+    'milindsrivastava1997', // Milind Srivastava (CMU/IIT, FlinkSketch)
+    'skejriwal44',          // Shubham Agarwal (Berkeley, Cache-Craft/RAG Systems)
+    'liana313',             // Liana Patel (Stanford, LOTUS/ACORN)
+    'sidjha1',              // Siddharth Jha (Berkeley, LOTUS Co-author)
+    'amogkam',              // Amog Kamsetty (Berkeley, Ray/TAG/Anyscale)
+    'lynnliu030',           // Shu Liu (Berkeley, SkyThought/Skyplane)
+    'pgasawa',              // Parth Asawa (Berkeley, Advisor Models)
+    'Shangyint'             // Shangyin Tan (Berkeley, DSPy/Letta)
 ];
 
 // --- Middleware ---
